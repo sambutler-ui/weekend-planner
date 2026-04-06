@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Weekend Adventure 🍁</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  /* ── DARK THEME (default) ── */
+  :root {
+    --bg: #0b1f1a;
+    --bg-body: radial-gradient(ellipse at top right, #163a2e 0%, #0b1f1a 50%, #061410 100%);
+    --green: #3d9e84; --green2: #27755f;
+    --green-light: #a8d8c8; --green-dim: rgba(61,158,132,0.18);
+    --text: #e8f4f0; --muted: #7aada0;
+    --card: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.09);
+    --input-bg: rgba(255,255,255,0.06);
+    --header-h1: linear-gradient(140deg,#ffffff 0%,#a8d8c8 60%,#5ab89c 100%);
+    --plan-card: linear-gradient(135deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.02) 100%);
+    --plan-border: rgba(255,255,255,0.12);
+    --weather-card-bg: rgba(255,255,255,0.06);
+    --alert-bg: rgba(220,80,60,0.15); --alert-border: rgba(220,80,60,0.35); --alert-text: #ffb8a8;
+    --orb1: rgba(61,158,132,0.16); --orb2: rgba(61,158,132,0.08);
+    --toggle-bg: rgba(255,255,255,0.08);
+    --neighbourhood-bg: rgba(255,255,255,0.04);
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Nunito', sans-serif;
+  }
+
+  /* ── LIGHT THEME ── */
+  [data-theme="light"] {
+    --bg: #f0f7f4;
+    --bg-body: linear-gradient(160deg, #e8f5f0 0%, #f5fbf8 50%, #eaf4ef 100%);
+    --green: #2d8a70; --green2: #1f6654;
+    --green-light: #1a5c47; --green-dim: rgba(45,138,112,0.12);
+    --text: #0d2820; --muted: #4a7a6e;
+    --card: rgba(0,0,0,0.04); --border: rgba(0,0,0,0.1);
+    --input-bg: rgba(255,255,255,0.9);
+    --header-h1: linear-gradient(140deg,#0d2820 0%,#1f6654 60%,#2d8a70 100%);
+    --plan-card: linear-gradient(135deg,rgba(255,255,255,0.9) 0%,rgba(255,255,255,0.7) 100%);
+    --plan-border: rgba(0,0,0,0.08);
+    --weather-card-bg: rgba(255,255,255,0.8);
+    --alert-bg: rgba(200,60,40,0.08); --alert-border: rgba(200,60,40,0.25); --alert-text: #a03020;
+    --orb1: rgba(45,138,112,0.12); --orb2: rgba(45,138,112,0.06);
+    --toggle-bg: rgba(0,0,0,0.06);
+    --neighbourhood-bg: rgba(255,255,255,0.7);
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-body); overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+  body { background: var(--bg-body); min-height: 100vh; }
+  .app { max-width: 430px; margin: 0 auto; min-height: 100vh; position: relative; padding-bottom: 40px; }
+
+  .screen { display: none; animation: fadeUp .45s ease both; }
+  .screen.active { display: block; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes float { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-9px)} }
+  @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes pop { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  /* ── THEME TOGGLE ── */
+  .theme-toggle {
+    position: absolute; top: 18px; right: 20px; z-index: 100;
+    background: var(--toggle-bg); border: 1px solid var(--border);
+    border-radius: 100px; padding: 6px 14px; cursor: pointer;
+    font-size: 18px; display: flex; align-items: center; gap: 6px;
+    transition: all 0.3s; backdrop-filter: blur(8px);
+  }
+  .theme-toggle:hover { transform: scale(1.05); }
+  .theme-toggle .toggle-label { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .5px; }
+
+  .header { padding: 52px 24px 20px; position: relative; }
+  .pill {
+    display: inline-block; background: var(--green-dim); border: 1px solid rgba(61,158,132,0.35);
+    border-radius: 100px; padding: 4px 14px; font-size: 10px; color: var(--green);
+    font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; margin-bottom: 12px;
+  }
+  .header h1 {
+    font-family: var(--font-display); font-size: 36px; font-weight: 900; line-height: 1.08;
+    background: var(--header-h1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header p { font-size: 14px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+  .back-btn {
+    background: none; border: none; color: var(--muted); font-size: 13px; font-family: var(--font-body);
+    font-weight: 700; cursor: pointer; padding: 0 0 18px; display: flex; align-items: center; gap: 6px;
+  }
+  .back-btn:hover { color: var(--green); }
+
+  .section { padding: 0 24px; margin-bottom: 20px; }
+  .label { font-size: 10px; color: var(--muted); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; display: block; }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    width: 100%; background: linear-gradient(135deg, var(--green) 0%, var(--green2) 100%);
+    color: #fff; border: none; border-radius: 16px; padding: 16px; font-size: 15px; font-weight: 800;
+    font-family: var(--font-body); cursor: pointer; letter-spacing: .4px;
+    box-shadow: 0 8px 28px rgba(61,158,132,0.32); transition: transform .15s, box-shadow .15s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(61,158,132,0.4); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    width: 100%; background: var(--card); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px; font-size: 14px; font-weight: 700;
+    font-family: var(--font-body); cursor: pointer; margin-top: 10px; transition: background .2s;
+  }
+  .btn-secondary:hover { background: var(--green-dim); color: var(--green); }
+  .btn-cal {
+    width: 100%; background: linear-gradient(135deg, #2d5a8a 0%, #1e3f63 100%);
+    color: #a8d0f4; border: 1px solid rgba(100,160,220,0.3); border-radius: 16px;
+    padding: 15px; font-size: 14px; font-weight: 800; font-family: var(--font-body);
+    cursor: pointer; letter-spacing: .3px; transition: transform .15s;
+    box-shadow: 0 6px 20px rgba(45,90,138,0.3);
+  }
+  .btn-cal:hover { transform: translateY(-1px); }
+  .cal-success {
+    background: var(--green-dim); border: 1px solid rgba(61,158,132,0.3);
+    border-radius: 12px; padding: 13px 16px; margin-top: 12px; font-size: 13px;
+    color: var(--green); text-align: center; animation: pop .3s ease;
+  }
+
+  /* ── INPUTS ── */
+  input[type=text], input[type=date] {
+    width: 100%; background: var(--input-bg); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 15px 18px; font-size: 15px; color: var(--text);
+    font-family: var(--font-body); outline: none; transition: border-color .2s, background .3s;
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type=text]:focus, input[type=date]:focus { border-color: var(--green); }
+  input[type=text]::placeholder { color: var(--muted); }
+  input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.4) sepia(1) hue-rotate(120deg); cursor: pointer; }
+  .input-hint { font-size: 11px; color: var(--muted); margin-top: 6px; opacity: 0.75; }
+
+  /* ── CHIPS ── */
+  .chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .chip {
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+    padding: 13px 10px; color: var(--muted); font-size: 13px; font-weight: 700;
+    font-family: var(--font-body); cursor: pointer; display: flex; align-items: center;
+    gap: 9px; transition: all .2s; text-align: left;
+  }
+  .chip .chip-emoji { font-size: 20px; flex-shrink: 0; }
+  .chip.selected { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .chip:hover { background: var(--green-dim); }
+
+  /* ── COMPANION GRID ── */
+  .companion-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .companion-chip {
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 16px;
+    padding: 16px 8px; color: var(--muted); font-size: 12px; font-weight: 800;
+    font-family: var(--font-body); cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; gap: 7px; transition: all .2s; text-align: center; line-height: 1.3;
+  }
+  .companion-chip .cc-emoji { font-size: 28px; }
+  .companion-chip.selected { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .companion-chip.partner { border-color: rgba(220,120,180,0.25); }
+  .companion-chip.partner.selected { background: rgba(200,80,140,0.12); border-color: #d46fa0; color: #d46fa0; }
+  .companion-chip.dog { border-color: rgba(200,150,80,0.25); }
+  .companion-chip.dog.selected { background: rgba(180,120,60,0.12); border-color: #c49040; color: #c49040; }
+  .companion-chip:hover { background: var(--green-dim); }
+
+  /* ── HOME WEATHER STRIP ── */
+  .home-weather-strip {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 18px; margin-bottom: 16px; transition: background 0.3s;
+  }
+  .home-weather-strip .hws-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .home-weather-strip .hws-city { font-size: 13px; font-weight: 800; color: var(--text); }
+  .home-weather-strip .hws-update { font-size: 10px; color: var(--muted); }
+  .home-weather-strip .hws-row { display: flex; gap: 8px; }
+  .hws-day {
+    flex: 1; background: var(--weather-card-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 8px; text-align: center; transition: background 0.3s;
+  }
+  .hws-day .hd-name { font-size: 9px; color: var(--muted); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px; }
+  .hws-day .hd-icon { font-size: 26px; margin-bottom: 4px; }
+  .hws-day .hd-high { font-size: 18px; font-weight: 900; color: var(--text); }
+  .hws-day .hd-low { font-size: 10px; color: var(--muted); }
+  .hws-day.today { border-color: var(--green); background: var(--green-dim); }
+
+  /* ── WEATHER ALERT ── */
+  .weather-alert {
+    background: var(--alert-bg); border: 1px solid var(--alert-border);
+    border-radius: 14px; padding: 12px 16px; margin-bottom: 14px;
+    display: flex; gap: 10px; align-items: flex-start; animation: shake 0.4s ease;
+  }
+  .weather-alert .wa-icon { font-size: 22px; flex-shrink: 0; }
+  .weather-alert .wa-title { font-size: 12px; font-weight: 800; color: var(--alert-text); margin-bottom: 3px; letter-spacing: .3px; }
+  .weather-alert .wa-msg { font-size: 12px; color: var(--alert-text); opacity: 0.85; line-height: 1.5; }
+
+  /* ── NEIGHBOURHOOD SECTION ── */
+  .neighbourhood-section { margin-bottom: 16px; }
+  .neighbourhood-card {
+    background: var(--neighbourhood-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 14px; transition: background 0.2s;
+  }
+  .neighbourhood-card:hover { background: var(--green-dim); }
+  .neighbourhood-card .nc-emoji { font-size: 30px; flex-shrink: 0; }
+  .neighbourhood-card .nc-name { font-size: 14px; font-weight: 800; color: var(--text); }
+  .neighbourhood-card .nc-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .neighbourhood-card .nc-badge {
+    margin-left: auto; flex-shrink: 0; background: var(--green-dim); border: 1px solid var(--green);
+    border-radius: 100px; padding: 3px 10px; font-size: 10px; font-weight: 800; color: var(--green);
+  }
+
+  /* ── HOME LOCATION INPUT ── */
+  .home-location-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .home-location-row input { flex: 1; margin: 0; }
+  .home-location-row .loc-btn {
+    background: linear-gradient(135deg, var(--green), var(--green2)); color: #fff;
+    border: none; border-radius: 14px; padding: 0 18px; font-size: 13px; font-weight: 800;
+    font-family: var(--font-body); cursor: pointer; white-space: nowrap; transition: transform .15s;
+  }
+  .home-location-row .loc-btn:hover { transform: scale(1.03); }
+
+  /* ── WEATHER CARDS (detail screen) ── */
+  .weather-row { display: flex; gap: 10px; margin-bottom: 18px; }
+  .weather-card {
+    flex: 1; background: var(--weather-card-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px 10px; text-align: center; transition: background 0.3s;
+  }
+  .weather-card .w-day { font-size: 9px; color: var(--muted); font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+  .weather-card .w-icon { font-size: 28px; margin-bottom: 5px; }
+  .weather-card .w-cond { font-size: 11px; color: var(--text); font-weight: 700; margin-bottom: 3px; }
+  .weather-card .w-high { font-size: 22px; font-weight: 900; color: var(--text); }
+  .weather-card .w-low { font-size: 10px; color: var(--muted); }
+  .weather-card .w-note { font-size: 9px; color: var(--muted); margin-top: 5px; font-style: italic; }
+  .weather-summary-box {
+    background: var(--green-dim); border: 1px solid rgba(61,158,132,0.25);
+    border-radius: 14px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--green); line-height: 1.5;
+  }
+  .event-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 13px 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 10px;
+  }
+  .event-item .e-emoji { font-size: 28px; flex-shrink: 0; }
+  .event-item .e-name { font-size: 14px; font-weight: 800; color: var(--text); }
+  .event-item .e-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── AI BUBBLE ── */
+  .ai-bubble {
+    background: var(--green-dim); border: 1px solid rgba(61,158,132,0.25);
+    border-radius: 18px 18px 18px 4px; padding: 14px 18px; margin-bottom: 22px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .ai-bubble .ai-icon { font-size: 26px; flex-shrink: 0; }
+  .ai-bubble .ai-text { font-size: 14px; color: var(--green); line-height: 1.65; }
+  .cursor { animation: blink 1s infinite; }
+
+  /* ── PLAN CARD ── */
+  .plan-card {
+    background: var(--plan-card); border: 1px solid var(--plan-border);
+    border-radius: 22px; padding: 20px; margin-bottom: 16px; animation: slideIn .4s ease both;
+    transition: background 0.3s;
+  }
+  .plan-card .pc-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .plan-card .pc-emoji { font-size: 38px; flex-shrink: 0; }
+  .plan-card .pc-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text); }
+  .plan-card .pc-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .plan-card .pc-tag {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800;
+    padding: 3px 10px; border-radius: 100px; margin-top: 6px; letter-spacing: .4px;
+  }
+  .plan-card .pc-desc { font-size: 13px; color: var(--muted); line-height: 1.65; margin-bottom: 13px; }
+  .plan-card .pc-tips { background: var(--green-dim); border-radius: 10px; padding: 10px 13px; margin-bottom: 14px; }
+  .plan-card .pc-tips-label { font-size: 9px; color: var(--muted); font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; margin-bottom: 4px; }
+  .plan-card .pc-tips-text { font-size: 12px; color: var(--green); }
+  .plan-card .pc-actions { display: flex; gap: 10px; }
+  .plan-card .pc-add {
+    flex: 1; background: linear-gradient(135deg, var(--green), var(--green2)); color: #fff;
+    border: none; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 800;
+    font-family: var(--font-body); cursor: pointer; transition: all .2s;
+  }
+  .plan-card .pc-add.added { background: var(--green-dim); color: var(--green); }
+  .plan-card .pc-reroll {
+    background: var(--card); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 15px; font-size: 15px; cursor: pointer; font-family: var(--font-body);
+  }
+
+  /* ── SCHEDULE ── */
+  .sched-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+    padding: 16px 18px; margin-bottom: 12px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .sched-item .si-emoji { font-size: 34px; flex-shrink: 0; }
+  .sched-item .si-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text); }
+  .sched-item .si-time { font-size: 11px; color: var(--muted); margin: 3px 0 5px; }
+  .sched-item .si-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+  .sched-item .si-remove { background: none; border: none; color: var(--border); font-size: 18px; cursor: pointer; padding: 0; flex-shrink: 0; margin-left: auto; }
+  .sched-item .si-remove:hover { color: rgba(255,100,100,0.7); }
+
+  /* ── CALENDAR SECTION ── */
+  .cal-section {
+    background: rgba(45,90,138,0.1); border: 1px solid rgba(100,160,220,0.2);
+    border-radius: 20px; padding: 20px; margin: 18px 0;
+  }
+  .cal-section .cal-heading { font-size: 16px; font-weight: 800; color: #5a9ad4; margin-bottom: 5px; font-family: var(--font-display); }
+  .cal-section .cal-sub { font-size: 12px; color: #6a9ab8; margin-bottom: 16px; line-height: 1.55; }
+
+  /* ── HOME FEATURES ── */
+  .features { display: flex; gap: 10px; margin-bottom: 16px; }
+  .feat-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 12px; transition: background 0.3s; }
+  .feat-card .fc-icon { font-size: 22px; margin-bottom: 7px; }
+  .feat-card .fc-title { font-size: 11px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+  .feat-card .fc-sub { font-size: 10px; color: var(--muted); line-height: 1.4; }
+
+  .progress-bar { display: flex; gap: 6px; margin-bottom: 20px; }
+  .prog-dot { height: 4px; flex: 1; border-radius: 4px; background: var(--border); transition: background .3s; }
+  .prog-dot.active { background: var(--green); }
+
+  .orb1 { position: absolute; top: -60px; right: -60px; width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle, var(--orb1) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+  .orb2 { position: absolute; top: 220px; left: -80px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, var(--orb2) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+  .header, .section { position: relative; z-index: 1; }
+
+  .loading-center { text-align: center; padding: 50px 24px; }
+  .loading-center .spin-emoji { font-size: 48px; display: inline-block; animation: spin 2s linear infinite; }
+  .loading-center p { margin-top: 16px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .loading-sm { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; padding: 8px 0; }
+  .loading-sm .spin-sm { animation: spin 1.5s linear infinite; display: inline-block; font-size: 16px; }
+
+  .empty-state { text-align: center; padding: 40px 0; }
+  .empty-state .es-icon { font-size: 52px; margin-bottom: 14px; }
+  .empty-state .es-title { font-size: 16px; font-weight: 800; color: var(--green); margin-bottom: 6px; }
+  .empty-state .es-sub { font-size: 13px; color: var(--muted); }
+
+  .mini-weather { background: var(--green-dim); border: 1px solid rgba(61,158,132,0.18); border-radius: 14px; padding: 13px 16px; margin-top: 8px; }
+  .mini-weather .mw-label { font-size: 9px; color: var(--muted); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .mini-weather .mw-row { display: flex; gap: 10px; }
+  .mini-weather .mw-day { flex: 1; text-align: center; }
+  .mini-weather .mw-dname { font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+  .mini-weather .mw-icon { font-size: 20px; margin-bottom: 3px; }
+  .mini-weather .mw-temp { font-size: 15px; font-weight: 900; color: var(--text); }
+
+  .act-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .act-pill { background: var(--card); border: 1px solid var(--border); border-radius: 100px; padding: 6px 13px; font-size: 12px; color: var(--muted); }
+
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+  /* ── NEIGHBOURHOOD SCREEN ── */
+  .discover-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .discover-header .disc-title { font-size: 16px; font-weight: 800; color: var(--text); font-family: var(--font-display); }
+  .discover-header .disc-refresh { background: none; border: 1px solid var(--border); border-radius: 100px; padding: 5px 12px; font-size: 11px; color: var(--muted); cursor: pointer; font-family: var(--font-body); font-weight: 700; }
+  .discover-header .disc-refresh:hover { border-color: var(--green); color: var(--green); }
+
+  /* ── SECTION DIVIDER WITH LABEL ── */
+  .section-heading { font-size: 10px; color: var(--muted); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; margin-top: 20px; display: flex; align-items: center; gap: 8px; }
+  .section-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="orb1"></div><div class="orb2"></div>
+
+  <!-- ══ HOME ══ -->
+  <div id="screen-home" class="screen active">
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
+      <span id="theme-icon">☀️</span><span class="toggle-label" id="theme-label">LIGHT</span>
+    </button>
+
+    <div class="header">
+      <div style="font-size:52px;margin-bottom:14px;animation:float 3.5s ease-in-out infinite">🌄</div>
+      <div class="pill">🍁 Weekend Planner</div>
+      <h1>Your Perfect<br>Weekend<br>Awaits</h1>
+    </div>
+
+    <!-- Location input for home screen -->
+    <div class="section">
+      <label class="label">📍 Your Location</label>
+      <div class="home-location-row">
+        <input type="text" id="home-location" placeholder="e.g. Toronto, ON or K1A 0A9" />
+        <button class="loc-btn" onclick="loadHomeData()">Go 🍁</button>
+      </div>
+
+      <!-- Weekend weather preview -->
+      <div id="home-weather-container">
+        <div style="font-size:12px;color:var(--muted);text-align:center;padding:14px 0;opacity:0.6">Enter your location to see the weekend forecast ☝️</div>
+      </div>
+
+      <!-- Weather alerts -->
+      <div id="home-alerts"></div>
+
+      <!-- Neighbourhood discoveries -->
+      <div id="home-neighbourhood"></div>
+
+      <div class="divider"></div>
+
+      <div class="act-pills">
+        <span class="act-pill">🔥 BBQ</span><span class="act-pill">🎸 Live Music</span><span class="act-pill">🌿 Nature Walk</span><span class="act-pill">🐕 Dog Day</span><span class="act-pill">⛳ Golf</span><span class="act-pill">🌱 Garden</span><span class="act-pill">❤️ Partner Day</span><span class="act-pill">🔨 DIY</span>
+      </div>
+      <button class="btn-primary" onclick="showScreen('setup')">Start My Adventure →</button>
+      <button class="btn-secondary" id="home-schedule-btn" style="display:none" onclick="showScreen('schedule')">📅 My Weekend Plan</button>
+    </div>
+
+    <div class="section">
+      <div class="features">
+        <div class="feat-card"><div class="fc-icon">🌤️</div><div class="fc-title">Live Weather</div><div class="fc-sub">Fri–Sun forecast + alerts</div></div>
+        <div class="feat-card"><div class="fc-icon">🗺️</div><div class="fc-title">Discover</div><div class="fc-sub">Local spots & events</div></div>
+        <div class="feat-card"><div class="fc-icon">📅</div><div class="fc-title">Export</div><div class="fc-sub">Apple, Google & Outlook</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SETUP ══ -->
+  <div id="screen-setup" class="screen">
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn2">
+      <span id="theme-icon2">☀️</span><span class="toggle-label" id="theme-label2">LIGHT</span>
+    </button>
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('home')">← Back</button>
+      <div class="progress-bar">
+        <div class="prog-dot active" id="prog1"></div>
+        <div class="prog-dot" id="prog2"></div>
+        <div class="prog-dot" id="prog3"></div>
+      </div>
+      <div class="pill" id="setup-pill">Step 1 of 3</div>
+      <h1 id="setup-title">Who's joining<br>you this weekend?</h1>
+    </div>
+
+    <div id="step1" class="section">
+      <label class="label">👥 Your Companions (pick all that apply)</label>
+      <div class="companion-grid" id="companion-grid"></div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">We'll tailor your plans based on who's coming along 🐾❤️</p>
+      <div style="margin-top:22px"><button class="btn-primary" onclick="setStep(2)">Next: Your Vibe →</button></div>
+    </div>
+
+    <div id="step2" class="section" style="display:none">
+      <label class="label">📍 Your Location</label>
+      <input type="text" id="location-input" placeholder="e.g. K1A 0A9 or Toronto, ON" />
+      <p class="input-hint">🍁 Enter a Canadian postal code or city & province</p>
+      <div style="margin-top:20px">
+        <label class="label">✨ Weekend Vibes (pick any)</label>
+        <div class="chip-grid" id="vibe-grid"></div>
+      </div>
+      <div style="margin-top:22px">
+        <button class="btn-primary" onclick="goStep3()">Next: Pick Activities →</button>
+        <button class="btn-secondary" onclick="setStep(1)">← Back</button>
+      </div>
+    </div>
+
+    <div id="step3" class="section" style="display:none">
+      <label class="label">🎯 Activities you love (pick any)</label>
+      <div class="chip-grid" id="activity-grid"></div>
+      <div style="margin-top:20px">
+        <button class="btn-primary" onclick="generatePlan()">🎲 Generate My Weekend Plan →</button>
+        <button class="btn-secondary" onclick="setStep(2)">← Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WEATHER DETAIL ══ -->
+  <div id="screen-weather" class="screen">
+    <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon3">☀️</span></button>
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('setup')">← Back</button>
+      <div class="pill">🌤️ Weather & Events</div>
+      <h1>Weekend<br>Forecast</h1>
+    </div>
+    <div class="section" id="weather-body">
+      <div class="loading-center"><div class="spin-emoji">🌍</div><p>Looking up the forecast...</p></div>
+    </div>
+  </div>
+
+  <!-- ══ ADVENTURE ══ -->
+  <div id="screen-adventure" class="screen">
+    <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon4">☀️</span></button>
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('setup')">← Start Over</button>
+      <div class="pill">🎲 Your Adventure</div>
+      <h1>Weekend<br>Plan Ready</h1>
+    </div>
+    <div class="section" id="adventure-body">
+      <div class="loading-center"><div class="spin-emoji">✨</div><p>Crafting your perfect<br>weekend plan...</p></div>
+    </div>
+  </div>
+
+  <!-- ══ SCHEDULE ══ -->
+  <div id="screen-schedule" class="screen">
+    <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon5">☀️</span></button>
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('adventure')">← Back</button>
+      <div class="pill">📅 My Weekend</div>
+      <h1>Your Weekend<br>Schedule</h1>
+    </div>
+    <div class="section" id="schedule-body"></div>
+  </div>
+
+  <!-- ══ NEIGHBOURHOOD ══ -->
+  <div id="screen-neighbourhood" class="screen">
+    <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon6">☀️</span></button>
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('home')">← Back</button>
+      <div class="pill">🗺️ Discover</div>
+      <h1>What's Near<br>You</h1>
+    </div>
+    <div class="section" id="neighbourhood-body">
+      <div class="loading-center"><div class="spin-emoji">🗺️</div><p>Finding local spots...</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const COMPANIONS = [
+  { id:"solo",    label:"Just Me",    emoji:"🧘", cls:"" },
+  { id:"partner", label:"My Partner", emoji:"❤️",  cls:"partner" },
+  { id:"dog",     label:"My Dog",     emoji:"🐕",  cls:"dog" },
+  { id:"friends", label:"Friends",    emoji:"👯",  cls:"" },
+  { id:"family",  label:"Family",     emoji:"👨‍👩‍👧", cls:"" },
+  { id:"kids",    label:"Kids",       emoji:"🧒",  cls:"" },
+];
+const VIBES = [
+  { id:"outdoor", label:"Outside",    emoji:"🌤️" },
+  { id:"indoor",  label:"Indoors",    emoji:"🏠" },
+  { id:"chill",   label:"Low Energy", emoji:"😌" },
+  { id:"active",  label:"Active",     emoji:"⚡" },
+  { id:"social",  label:"Social",     emoji:"🥂" },
+  { id:"quiet",   label:"Quiet Time", emoji:"🤫" },
+];
+const ACTIVITIES = [
+  { id:"bbq",            label:"Host a BBQ",     emoji:"🔥" },
+  { id:"themed_party",   label:"Themed Party",   emoji:"🎭" },
+  { id:"live_music",     label:"Live Music",      emoji:"🎸" },
+  { id:"dog_day",        label:"Dog Day Out",     emoji:"🐕" },
+  { id:"gardening",      label:"Gardening",       emoji:"🌱" },
+  { id:"landscaping",    label:"Landscaping",     emoji:"🏡" },
+  { id:"reading",        label:"Read Outdoors",   emoji:"📖" },
+  { id:"swimming",       label:"Swimming",        emoji:"🏊" },
+  { id:"diy",            label:"DIY Project",     emoji:"🔨" },
+  { id:"nature_walk",    label:"Nature Walk",     emoji:"🌿" },
+  { id:"fishing",        label:"Fishing",         emoji:"🎣" },
+  { id:"golf",           label:"Golf",            emoji:"⛳" },
+  { id:"picnic",         label:"Picnic",          emoji:"🧺" },
+  { id:"kayaking",       label:"Kayaking",        emoji:"🛶" },
+  { id:"photography",    label:"Photo Walk",      emoji:"📸" },
+  { id:"farmers_market", label:"Farmers Market",  emoji:"🥦" },
+  { id:"bonfire",        label:"Bonfire Night",   emoji:"🪵" },
+  { id:"yoga",           label:"Outdoor Yoga",    emoji:"🧘" },
+  { id:"cycling",        label:"Cycling",         emoji:"🚴" },
+  { id:"stargazing",     label:"Stargazing",      emoji:"🌟" },
+];
+
+const COMPANION_STYLES = {
+  solo:    { label:"Solo",            color:"rgba(122,173,160,0.2)",  text:"#7aada0" },
+  partner: { label:"❤️ Partner",      color:"rgba(200,80,140,0.2)",   text:"#d46fa0" },
+  dog:     { label:"🐕 Dog-Friendly", color:"rgba(180,120,60,0.2)",   text:"#c49040" },
+  friends: { label:"👯 With Friends", color:"rgba(80,120,200,0.2)",   text:"#5a8ad4" },
+  family:  { label:"👨‍👩‍👧 Family",     color:"rgba(120,200,80,0.2)",   text:"#5aaa30" },
+  kids:    { label:"🧒 Kid-Friendly", color:"rgba(200,160,80,0.2)",   text:"#c49030" },
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let selectedCompanions = [];
+let selectedVibes = [];
+let selectedActivities = [];
+let weatherData = null;
+let homeWeatherData = null;
+let plans = [];
+let schedule = [];
+let locationValue = "";
+let isDark = true;
+
+// ── THEME ─────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  const icon = isDark ? "☀️" : "🌙";
+  const label = isDark ? "LIGHT" : "DARK";
+  ["theme-icon","theme-icon2","theme-icon3","theme-icon4","theme-icon5","theme-icon6"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = icon;
+  });
+  ["theme-label","theme-label2"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = label;
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+function init() {
+  const cg = document.getElementById("companion-grid");
+  COMPANIONS.forEach(c => {
+    const btn = document.createElement("button");
+    btn.className = `companion-chip ${c.cls}`; btn.id = "comp-" + c.id;
+    btn.innerHTML = `<span class="cc-emoji">${c.emoji}</span>${c.label}`;
+    btn.onclick = () => toggleCompanion(c.id); cg.appendChild(btn);
+  });
+  const vg = document.getElementById("vibe-grid");
+  VIBES.forEach(v => {
+    const btn = document.createElement("button");
+    btn.className = "chip"; btn.id = "vibe-" + v.id;
+    btn.innerHTML = `<span class="chip-emoji">${v.emoji}</span>${v.label}`;
+    btn.onclick = () => toggleChip("vibe", v.id, selectedVibes); vg.appendChild(btn);
+  });
+  const ag = document.getElementById("activity-grid");
+  ACTIVITIES.forEach(a => {
+    const btn = document.createElement("button");
+    btn.className = "chip"; btn.id = "act-" + a.id;
+    btn.innerHTML = `<span class="chip-emoji">${a.emoji}</span>${a.label}`;
+    btn.onclick = () => toggleChip("act", a.id, selectedActivities); ag.appendChild(btn);
+  });
+}
+
+function toggleCompanion(id) {
+  if (id === "solo") {
+    const wasSolo = selectedCompanions.includes("solo");
+    selectedCompanions = wasSolo ? [] : ["solo"];
+    document.querySelectorAll(".companion-chip").forEach(b => b.classList.remove("selected"));
+    if (!wasSolo) document.getElementById("comp-solo").classList.add("selected");
+  } else {
+    selectedCompanions = selectedCompanions.filter(c => c !== "solo");
+    document.getElementById("comp-solo").classList.remove("selected");
+    const idx = selectedCompanions.indexOf(id);
+    const btn = document.getElementById("comp-" + id);
+    if (idx > -1) { selectedCompanions.splice(idx, 1); btn.classList.remove("selected"); }
+    else { selectedCompanions.push(id); btn.classList.add("selected"); }
+  }
+}
+
+function toggleChip(prefix, id, arr) {
+  const btn = document.getElementById(prefix + "-" + id);
+  const idx = arr.indexOf(id);
+  if (idx > -1) { arr.splice(idx, 1); btn.classList.remove("selected"); }
+  else { arr.push(id); btn.classList.add("selected"); }
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const el = document.getElementById("screen-" + name);
+  if (el) { el.classList.add("active"); window.scrollTo(0,0); }
+  if (name === "home") {
+    const hb = document.getElementById("home-schedule-btn");
+    hb.style.display = schedule.length ? "block" : "none";
+    hb.textContent = `📅 My Weekend Plan (${schedule.length})`;
+  }
+  if (name === "schedule") renderSchedule();
+  if (name === "neighbourhood") renderNeighbourhood();
+}
+
+function setStep(n) {
+  [1,2,3].forEach(i => document.getElementById("step"+i).style.display = i===n?"block":"none");
+  const pills  = ["Step 1 of 3","Step 2 of 3","Step 3 of 3"];
+  const titles = ["Who's joining<br>you this weekend?","What's your<br>weekend vibe?","Pick your<br>activities"];
+  document.getElementById("setup-pill").textContent = pills[n-1];
+  document.getElementById("setup-title").innerHTML  = titles[n-1];
+  [1,2,3].forEach(i => document.getElementById("prog"+i).classList.toggle("active", i<=n));
+}
+
+function goStep3() {
+  locationValue = document.getElementById("location-input").value.trim();
+  if (!locationValue) locationValue = document.getElementById("home-location").value.trim();
+  if (locationValue) fetchWeather();
+  setStep(3);
+}
+
+// ── HOME DATA LOAD ────────────────────────────────────────────────────────
+async function loadHomeData() {
+  const loc = document.getElementById("home-location").value.trim();
+  if (!loc) return;
+  locationValue = loc;
+
+  // sync location to setup screen
+  document.getElementById("location-input").value = loc;
+
+  // Show loading
+  document.getElementById("home-weather-container").innerHTML = `<div class="loading-sm"><span class="spin-sm">🌍</span> Loading weekend forecast...</div>`;
+  document.getElementById("home-alerts").innerHTML = "";
+  document.getElementById("home-neighbourhood").innerHTML = `<div class="loading-sm"><span class="spin-sm">🗺️</span> Finding local spots...</div>`;
+
+  await Promise.all([loadHomeWeather(loc), loadHomeNeighbourhood(loc)]);
+}
+
+async function loadHomeWeather(loc) {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:900,
+        messages:[{ role:"user", content:
+          `For Canadian location "${loc}", generate a weekend weather forecast for this coming Friday, Saturday, and Sunday. Use Celsius only. Also generate any relevant weather alerts or warnings if conditions are poor (rain, storms, extreme cold/heat, high winds).
+Respond ONLY with valid JSON, no markdown:
+{"city":"City, Province","weather":[
+{"day":"Friday","condition":"Sunny","icon":"☀️","high":21,"low":12,"note":"Great start to the weekend"},
+{"day":"Saturday","condition":"Partly Cloudy","icon":"⛅","high":18,"low":10,"note":"Good for outdoor plans"},
+{"day":"Sunday","condition":"Rainy","icon":"🌧️","high":14,"low":9,"note":"Consider indoor activities"}
+],"alerts":[
+{"icon":"⚠️","title":"Rain Warning","message":"Heavy rain expected Sunday afternoon. Consider moving outdoor plans to Saturday."}
+],"summary":"Brief overall weekend summary in one sentence."}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
+    homeWeatherData = JSON.parse(raw);
+    weatherData = homeWeatherData; // share with adventure screen
+    renderHomeWeather();
+    renderHomeAlerts();
+  } catch(e) {
+    homeWeatherData = {
+      city: loc,
+      weather:[
+        {day:"Friday",   condition:"Sunny",         icon:"☀️",  high:21, low:11, note:"Great start"},
+        {day:"Saturday", condition:"Partly Cloudy", icon:"⛅",  high:18, low:10, note:"Good for plans"},
+        {day:"Sunday",   condition:"Cloudy",        icon:"🌥️", high:15, low:9,  note:"Bit overcast"}
+      ],
+      alerts:[], summary:"A decent weekend ahead!"
+    };
+    weatherData = homeWeatherData;
+    renderHomeWeather();
+    renderHomeAlerts();
+  }
+}
+
+function renderHomeWeather() {
+  if (!homeWeatherData) return;
+  const days = homeWeatherData.weather || [];
+  let html = `<div class="home-weather-strip">
+    <div class="hws-top">
+      <span class="hws-city">📍 ${homeWeatherData.city}</span>
+      <span class="hws-update">This Weekend</span>
+    </div>
+    <div class="hws-row">`;
+  days.forEach((w, i) => {
+    html += `<div class="hws-day ${i===0?'today':''}">
+      <div class="hd-name">${w.day}</div>
+      <div class="hd-icon">${w.icon}</div>
+      <div class="hd-high">${w.high}°</div>
+      <div class="hd-low">${w.low}°C</div>
+    </div>`;
+  });
+  html += `</div>`;
+  if (homeWeatherData.summary) {
+    html += `<div style="font-size:12px;color:var(--muted);margin-top:12px;line-height:1.5">🍁 ${homeWeatherData.summary}</div>`;
+  }
+  html += `</div>`;
+  document.getElementById("home-weather-container").innerHTML = html;
+}
+
+function renderHomeAlerts() {
+  const alerts = homeWeatherData?.alerts || [];
+  const el = document.getElementById("home-alerts");
+  if (!alerts.length) { el.innerHTML = ""; return; }
+  let html = "";
+  alerts.forEach(a => {
+    html += `<div class="weather-alert">
+      <div class="wa-icon">${a.icon || "⚠️"}</div>
+      <div><div class="wa-title">${a.title}</div><div class="wa-msg">${a.message}</div></div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+async function loadHomeNeighbourhood(loc) {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:700,
+        messages:[{ role:"user", content:
+          `For Canadian location "${loc}", suggest 3 local things to do or places to check out this weekend. Be specific and realistic for that Canadian city/area. Mix types: could be a local event, a park, a market, a restaurant, a trail, a neighbourhood, etc.
+Respond ONLY with valid JSON, no markdown:
+{"spots":[
+{"name":"Distillery District","emoji":"🏛️","type":"Neighbourhood","detail":"Cobblestone streets, art galleries & weekend market","badge":"Popular"},
+{"name":"Tommy Thompson Park","emoji":"🌿","type":"Nature","detail":"Bird sanctuary with 15km of trails along the lake","badge":"Free"},
+{"name":"St. Lawrence Market","emoji":"🥦","type":"Market","detail":"Open Saturday 5am–3pm, best peameal bacon in the city","badge":"Saturday"}
+]}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
+    const parsed = JSON.parse(raw);
+    renderHomeNeighbourhood(parsed.spots || []);
+  } catch(e) {
+    renderHomeNeighbourhood([]);
+  }
+}
+
+function renderHomeNeighbourhood(spots) {
+  const el = document.getElementById("home-neighbourhood");
+  if (!spots.length) { el.innerHTML = ""; return; }
+  let html = `<div class="section-heading">🗺️ Discover This Weekend</div>`;
+  spots.forEach(s => {
+    html += `<div class="neighbourhood-card" onclick="showScreen('neighbourhood')">
+      <div class="nc-emoji">${s.emoji}</div>
+      <div style="flex:1">
+        <div class="nc-name">${s.name}</div>
+        <div class="nc-detail">${s.detail}</div>
+      </div>
+      ${s.badge ? `<div class="nc-badge">${s.badge}</div>` : ""}
+    </div>`;
+  });
+  html += `<button class="btn-secondary" style="margin-top:4px" onclick="showScreen('neighbourhood')">🗺️ See More Local Spots →</button>`;
+  el.innerHTML = html;
+}
+
+// ── NEIGHBOURHOOD SCREEN ──────────────────────────────────────────────────
+async function renderNeighbourhood() {
+  const body = document.getElementById("neighbourhood-body");
+  const loc = locationValue || document.getElementById("home-location").value.trim();
+  if (!loc) {
+    body.innerHTML = `<div class="empty-state"><div class="es-icon">🗺️</div><div class="es-title">No location set</div><div class="es-sub">Go back and enter your location first.</div></div><button class="btn-primary" style="margin-top:16px" onclick="showScreen('home')">← Go Back</button>`;
+    return;
+  }
+  body.innerHTML = `<div class="loading-center"><div class="spin-emoji">🗺️</div><p>Discovering local spots<br>near ${loc}...</p></div>`;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:1200,
+        messages:[{ role:"user", content:
+          `For the Canadian location "${loc}", give detailed weekend discovery recommendations across 4 categories: outdoor nature spots, local food & drink, arts & culture, and active/sports. Be specific and realistic for that area.
+Respond ONLY with valid JSON, no markdown:
+{"categories":[
+{"title":"🌿 Outdoor & Nature","spots":[
+  {"name":"Spot Name","emoji":"🌿","detail":"What it is and why it's worth visiting this weekend","badge":"Free"},
+  {"name":"Spot Name 2","emoji":"🏞️","detail":"Description","badge":"Trail"}
+]},
+{"title":"🍽️ Food & Drink","spots":[
+  {"name":"Place Name","emoji":"🍺","detail":"What to order, when it's open","badge":"Saturday"},
+  {"name":"Place Name 2","emoji":"☕","detail":"Description","badge":"Local Fave"}
+]},
+{"title":"🎨 Arts & Culture","spots":[
+  {"name":"Venue Name","emoji":"🎭","detail":"What's on this weekend","badge":"Event"},
+  {"name":"Venue Name 2","emoji":"🎨","detail":"Description","badge":"Free"}
+]},
+{"title":"⚡ Active & Sports","spots":[
+  {"name":"Activity Name","emoji":"🚴","detail":"Where to go and what you'll need","badge":"Weekend"},
+  {"name":"Activity Name 2","emoji":"⛳","detail":"Description","badge":"Outdoor"}
+]}
+]}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
+    const parsed = JSON.parse(raw);
+    let html = `<div style="font-size:13px;color:var(--muted);margin-bottom:16px">📍 ${loc}</div>`;
+    (parsed.categories || []).forEach(cat => {
+      html += `<div class="section-heading">${cat.title}</div>`;
+      (cat.spots || []).forEach(s => {
+        html += `<div class="neighbourhood-card">
+          <div class="nc-emoji">${s.emoji}</div>
+          <div style="flex:1">
+            <div class="nc-name">${s.name}</div>
+            <div class="nc-detail">${s.detail}</div>
+          </div>
+          ${s.badge?`<div class="nc-badge">${s.badge}</div>`:""}
+        </div>`;
+      });
+    });
+    html += `<button class="btn-secondary" style="margin-top:8px" onclick="showScreen('home')">← Back to Home</button>`;
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div class="empty-state"><div class="es-icon">😕</div><div class="es-title">Couldn't load spots</div><div class="es-sub">Check your connection and try again.</div></div><button class="btn-primary" style="margin-top:16px" onclick="renderNeighbourhood()">Try Again</button>`;
+  }
+}
+
+// ── WEATHER ───────────────────────────────────────────────────────────────
+async function fetchWeather() {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:900,
+        messages:[{ role:"user", content:
+          `For Canadian location "${locationValue}", give a 3-day weekend weather forecast (Friday, Saturday, Sunday) and 4 local events. Use Celsius only. Include any weather warnings.
+Respond ONLY with valid JSON, no markdown:
+{"city":"City, Province","weather":[{"day":"Friday","condition":"Sunny","icon":"☀️","high":21,"low":12,"note":""},{"day":"Saturday","condition":"Partly Cloudy","icon":"⛅","high":18,"low":10,"note":""},{"day":"Sunday","condition":"Rainy","icon":"🌧️","high":14,"low":8,"note":""}],"alerts":[{"icon":"⚠️","title":"Alert Title","message":"Alert detail"}],"events":[{"name":"Farmers Market","emoji":"🥦","detail":"Sat 9am–2pm"},{"name":"Live Jazz Patio","emoji":"🎷","detail":"Sun 3pm–6pm"},{"name":"Trail Run","emoji":"🏃","detail":"Sat 8am"},{"name":"Brewery Open House","emoji":"🍺","detail":"Sat 2pm–6pm"}],"summary":"One sentence summary."}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
+    weatherData = JSON.parse(raw);
+  } catch(e) {
+    weatherData = { city:locationValue||"Your Area, Canada", weather:[{day:"Friday",condition:"Sunny",icon:"☀️",high:21,low:11,note:""},{day:"Saturday",condition:"Partly Cloudy",icon:"⛅",high:18,low:10,note:""},{day:"Sunday",condition:"Clear",icon:"🌤️",high:19,low:10,note:""}], alerts:[], events:[], summary:"A lovely weekend ahead!" };
+  }
+  renderWeatherScreen();
+}
+
+function renderWeatherScreen() {
+  if (!weatherData) return;
+  let html = `<div style="font-size:13px;color:var(--muted);margin-bottom:14px">📍 ${weatherData.city}</div>`;
+
+  // Alerts
+  (weatherData.alerts || []).forEach(a => {
+    html += `<div class="weather-alert"><div class="wa-icon">${a.icon||"⚠️"}</div><div><div class="wa-title">${a.title}</div><div class="wa-msg">${a.message}</div></div></div>`;
+  });
+
+  html += `<div class="weather-row">`;
+  (weatherData.weather || []).forEach(w => {
+    html += `<div class="weather-card"><div class="w-day">${w.day}</div><div class="w-icon">${w.icon}</div><div class="w-cond">${w.condition}</div><div class="w-high">${w.high}°C</div><div class="w-low">${w.low}°C low</div>${w.note?`<div class="w-note">${w.note}</div>`:""}</div>`;
+  });
+  html += `</div>`;
+  if (weatherData.summary) html += `<div class="weather-summary-box">🌤️ ${weatherData.summary}</div>`;
+  if (weatherData.events && weatherData.events.length) {
+    html += `<label class="label">🎉 Happening Nearby</label>`;
+    weatherData.events.forEach(e => {
+      html += `<div class="event-item"><div class="e-emoji">${e.emoji}</div><div><div class="e-name">${e.name}</div><div class="e-detail">${e.detail}</div></div></div>`;
+    });
+  }
+  html += `<div style="margin-top:18px"><button class="btn-primary" onclick="showScreen('setup')">Pick My Activities →</button></div>`;
+  document.getElementById("weather-body").innerHTML = html;
+}
+
+function viewWeather() { renderWeatherScreen(); showScreen("weather"); }
+
+// ── GENERATE PLAN ─────────────────────────────────────────────────────────
+async function generatePlan() {
+  showScreen("adventure");
+  document.getElementById("adventure-body").innerHTML = `<div class="loading-center"><div class="spin-emoji">✨</div><p>Crafting your perfect<br>weekend plan...</p></div>`;
+
+  const actNames  = selectedActivities.map(id=>ACTIVITIES.find(a=>a.id===id)?.label).filter(Boolean).join(", ");
+  const vibeNames = selectedVibes.join(", ");
+  const compNames = selectedCompanions.map(id=>COMPANIONS.find(c=>c.id===id)?.label).filter(Boolean).join(", ");
+  const city = weatherData?.city || locationValue || "Canada";
+  const alerts = (weatherData?.alerts||[]).map(a=>a.title).join(", ");
+  const wx = weatherData ? `Weather: ${weatherData.summary} Fri ${weatherData.weather[0]?.high}°C ${weatherData.weather[0]?.condition}, Sat ${weatherData.weather[1]?.high}°C ${weatherData.weather[1]?.condition}, Sun ${weatherData.weather[2]?.high}°C ${weatherData.weather[2]?.condition}. ${alerts?`Active alerts: ${alerts}.`:""}` : "";
+  const hasDog = selectedCompanions.includes("dog");
+  const hasPartner = selectedCompanions.includes("partner");
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:1500,
+        messages:[{ role:"user", content:
+          `You are an enthusiastic Canadian weekend adventure planner. Create 3 activity plans.
+Location: ${city}. ${wx}
+Companions: ${compNames||"solo"}. Activities: ${actNames||"outdoor activities"}. Vibe: ${vibeNames||"flexible"}.
+${hasDog?"One plan MUST be dog-friendly.":""}
+${hasPartner?"One plan MUST be a romantic couple activity.":""}
+IMPORTANT: If there are weather alerts, avoid recommending outdoor activities during those times and suggest weather-appropriate alternatives.
+Use Canadian context. All temperatures in Celsius.
+Respond ONLY with valid JSON, no markdown:
+{"greeting":"Warm 2-sentence intro mentioning companions and weather","plans":[
+{"id":"p1","title":"Friday Evening","emoji":"🌆","time":"Friday 6pm–9pm","vibe":"Wind Down","companion":"solo","description":"2-3 vivid sentences","tips":"One Canadian tip"},
+{"id":"p2","title":"Saturday Adventure","emoji":"🌞","time":"Saturday All Day","vibe":"Active","companion":"partner","description":"2-3 sentences","tips":"One tip"},
+{"id":"p3","title":"Sunday Chill","emoji":"🌻","time":"Sunday All Day","vibe":"Relaxed","companion":"dog","description":"2-3 sentences","tips":"One tip"}
+]}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
+    const parsed = JSON.parse(raw);
+    plans = parsed.plans || [];
+    renderAdventureScreen(parsed.greeting || "Here are your personalized weekend plans!");
+  } catch(e) {
+    plans = [
+      { id:"p1", title:"Friday Evening Kickoff", emoji:"🌆", time:"Friday 6pm–9pm",  vibe:"Social",   companion:"friends", description:"Kick off the weekend at a local patio or craft brewery. There's nothing more Canadian than cold drinks with good people as the workweek fades away.", tips:"Check local brewery taprooms — many have Friday night live music." },
+      { id:"p2", title:"Saturday Nature Day",    emoji:"🌿", time:"Saturday All Day", vibe:"Active",   companion:"solo",    description:"Hit a conservation trail or provincial park for the full day. Pack a lunch, bring layers, and enjoy the best of the Canadian outdoors.", tips:"Download the AllTrails app for offline maps before you go." },
+      { id:"p3", title:"Sunday Garden & Relax",  emoji:"🌱", time:"Sunday 10am–2pm", vibe:"Peaceful", companion:"partner", description:"Spend Sunday morning in the garden or at a local market together. A slow, restorative end to the weekend before the week begins.", tips:"Local garden centres often have Sunday sales — great time to grab native plants." }
+    ];
+    renderAdventureScreen("Here are some awesome plans for your weekend!");
+  }
+}
+
+function companionTag(id) {
+  const s = COMPANION_STYLES[id] || COMPANION_STYLES["solo"];
+  return `<span class="pc-tag" style="background:${s.color};color:${s.text}">${s.label}</span>`;
+}
+
+function renderAdventureScreen(greeting) {
+  // Weather alert banner
+  const alerts = weatherData?.alerts || [];
+  let alertHtml = "";
+  alerts.forEach(a => {
+    alertHtml += `<div class="weather-alert"><div class="wa-icon">${a.icon||"⚠️"}</div><div><div class="wa-title">${a.title}</div><div class="wa-msg">${a.message}</div></div></div>`;
+  });
+
+  let html = `${alertHtml}<div class="ai-bubble"><div class="ai-icon">🌄</div><div class="ai-text" id="ai-text"></div></div>`;
+  plans.forEach((p, i) => {
+    const added = schedule.some(s => s.id === p.id);
+    html += `<div class="plan-card" style="animation-delay:${i*0.12}s">
+      <div class="pc-top">
+        <div class="pc-emoji">${p.emoji}</div>
+        <div>
+          <div class="pc-title">${p.title}</div>
+          <div class="pc-meta">${p.time} · ${p.vibe}</div>
+          ${companionTag(p.companion)}
+        </div>
+      </div>
+      <div class="pc-desc">${p.description}</div>
+      ${p.tips?`<div class="pc-tips"><div class="pc-tips-label">💡 Pro Tip</div><div class="pc-tips-text">${p.tips}</div></div>`:""}
+      <div class="pc-actions">
+        <button class="pc-add ${added?'added':''}" id="add-${p.id}" onclick="addToSchedule('${p.id}')">${added?"✓ Added to Plan":"Add to Weekend"}</button>
+        <button class="pc-reroll" onclick="rerollPlan('${p.id}')">🎲</button>
+      </div>
+    </div>`;
+  });
+  html += `<div style="margin-top:8px">
+    <button class="btn-primary" onclick="showScreen('schedule')">📅 View My Weekend Plan</button>
+    <button class="btn-secondary" onclick="generatePlan()">🎲 Regenerate All Plans</button>
+    ${weatherData?`<button class="btn-secondary" style="margin-top:8px" onclick="viewWeather()">🌤️ Weather & Local Events</button>`:""}
+    <button class="btn-secondary" style="margin-top:8px" onclick="showScreen('neighbourhood')">🗺️ Discover Local Spots</button>
+  </div>`;
+  document.getElementById("adventure-body").innerHTML = html;
+  typeText("ai-text", greeting);
+}
+
+function typeText(elId, text, speed=16) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = ""; let i = 0;
+  const cursor = document.createElement("span");
+  cursor.className = "cursor"; cursor.textContent = "▌"; el.appendChild(cursor);
+  const iv = setInterval(() => {
+    if (i < text.length) { el.insertBefore(document.createTextNode(text[i]), cursor); i++; }
+    else { clearInterval(iv); cursor.remove(); }
+  }, speed);
+}
+
+// ── SCHEDULE ──────────────────────────────────────────────────────────────
+function addToSchedule(planId) {
+  const plan = plans.find(p => p.id === planId);
+  if (!plan || schedule.some(s => s.id === planId)) return;
+  schedule.push(plan);
+  const btn = document.getElementById("add-" + planId);
+  if (btn) { btn.textContent = "✓ Added to Plan"; btn.classList.add("added"); }
+  const hb = document.getElementById("home-schedule-btn");
+  hb.style.display = "block";
+  hb.textContent = `📅 My Weekend Plan (${schedule.length})`;
+}
+
+function removeFromSchedule(planId) {
+  schedule = schedule.filter(s => s.id !== planId);
+  renderSchedule();
+}
+
+function renderSchedule() {
+  const body = document.getElementById("schedule-body");
+  if (schedule.length === 0) {
+    body.innerHTML = `<div class="empty-state"><div class="es-icon">🌿</div><div class="es-title">No plans yet!</div><div class="es-sub">Go back and add some activities<br>to your weekend.</div></div>
+    <button class="btn-primary" style="margin-top:16px" onclick="showScreen('adventure')">← Add Activities</button>
+    <button class="btn-secondary" onclick="showScreen('home')">🏠 Back to Home</button>`;
+    return;
+  }
+  let html = "";
+
+  // Weather alert on schedule
+  (weatherData?.alerts||[]).forEach(a => {
+    html += `<div class="weather-alert"><div class="wa-icon">${a.icon||"⚠️"}</div><div><div class="wa-title">${a.title}</div><div class="wa-msg">${a.message}</div></div></div>`;
+  });
+
+  schedule.forEach(p => {
+    html += `<div class="sched-item">
+      <div class="si-emoji">${p.emoji}</div>
+      <div style="flex:1">
+        <div class="si-title">${p.title}</div>
+        <div class="si-time">${p.time}</div>
+        ${companionTag(p.companion)}
+        <div class="si-desc">${p.description}</div>
+      </div>
+      <button class="si-remove" onclick="removeFromSchedule('${p.id}')">✕</button>
+    </div>`;
+  });
+
+  if (weatherData) {
+    html += `<div class="mini-weather"><div class="mw-label">Weekend Forecast</div><div class="mw-row">`;
+    (weatherData.weather||[]).slice(0,3).forEach(w => {
+      html += `<div class="mw-day"><div class="mw-dname">${w.day}</div><div class="mw-icon">${w.icon}</div><div class="mw-temp">${w.high}°C</div></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  html += `<div class="cal-section">
+    <div class="cal-heading">📅 Export to Calendar</div>
+    <div class="cal-sub">Download as a .ics file — works with Apple Calendar, Google Calendar & Outlook.</div>
+    <label class="label" style="margin-bottom:8px">📆 Select your Friday start date</label>
+    <input type="date" id="sat-date" />
+    <button class="btn-cal" style="margin-top:12px" onclick="exportCalendar()">⬇️ Download .ics Calendar File</button>
+    <div id="cal-success" style="display:none" class="cal-success">✅ Calendar file downloaded! Open it to import.</div>
+  </div>`;
+
+  html += `<button class="btn-primary" onclick="showScreen('home')">🏠 Back to Home</button>
+  <button class="btn-secondary" onclick="showScreen('adventure')">← Add More Activities</button>`;
+  body.innerHTML = html;
+
+  const satInput = document.getElementById("sat-date");
+  if (satInput) {
+    const today = new Date();
+    const daysUntilFri = (5 - today.getDay() + 7) % 7 || 7;
+    const nextFri = new Date(today);
+    nextFri.setDate(today.getDate() + daysUntilFri);
+    satInput.value = nextFri.toISOString().split("T")[0];
+  }
+}
+
+// ── CALENDAR EXPORT ────────────────────────────────────────────────────────
+function exportCalendar() {
+  const satInput = document.getElementById("sat-date");
+  if (!satInput || !satInput.value) { alert("Please pick a start date first."); return; }
+  const friDate = new Date(satInput.value + "T00:00:00");
+  const satDate = new Date(friDate); satDate.setDate(friDate.getDate() + 1);
+  const sunDate = new Date(friDate); sunDate.setDate(friDate.getDate() + 2);
+
+  function icsStamp(date, hour, min) {
+    const d = new Date(date); d.setHours(hour, min, 0, 0);
+    return d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  }
+  function parseTimes(timeStr) {
+    const isSunday = /sunday/i.test(timeStr);
+    const isFriday = /friday/i.test(timeStr);
+    const isAllDay = /all\s*day/i.test(timeStr);
+    const base = isSunday ? sunDate : isFriday ? friDate : satDate;
+    if (isAllDay) return { start: icsStamp(base, 9, 0), end: icsStamp(base, 17, 0) };
+    const m = timeStr.match(/(\d+)(?::(\d+))?\s*(am|pm)?[–\-]+(\d+)(?::(\d+))?\s*(am|pm)?/i);
+    if (!m) return { start: icsStamp(base, 10, 0), end: icsStamp(base, 13, 0) };
+    let sh = parseInt(m[1]), eh = parseInt(m[4]);
+    const sa = (m[3]||"am").toLowerCase(), ea = (m[6]||"pm").toLowerCase();
+    if (sa==="pm"&&sh<12) sh+=12; if (sa==="am"&&sh===12) sh=0;
+    if (ea==="pm"&&eh<12) eh+=12; if (ea==="am"&&eh===12) eh=0;
+    return { start: icsStamp(base, sh, 0), end: icsStamp(base, eh, 0) };
+  }
+  const uid  = () => "WA-"+Math.random().toString(36).substr(2,9).toUpperCase()+"@weekendadventure.ca";
+  const now  = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  const loc  = weatherData?.city || locationValue || "Canada";
+  const esc  = s => (s||"").replace(/\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;");
+  let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Weekend Adventure CA//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:🌄 My Weekend Adventure\r\nX-WR-TIMEZONE:America/Toronto\r\n";
+  schedule.forEach(p => {
+    const { start, end } = parseTimes(p.time);
+    const tip = p.tips ? `\\n\\n💡 Tip: ${esc(p.tips)}` : "";
+    ics += `BEGIN:VEVENT\r\nUID:${uid()}\r\nDTSTAMP:${now}Z\r\nDTSTART:${start}\r\nDTEND:${end}\r\nSUMMARY:${esc(p.emoji+" "+p.title)}\r\nDESCRIPTION:${esc(p.description)}${tip}\r\nLOCATION:${esc(loc)}\r\nSTATUS:CONFIRMED\r\nEND:VEVENT\r\n`;
+  });
+  ics += "END:VCALENDAR";
+  const blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = "my-weekend-adventure.ics";
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  const ok = document.getElementById("cal-success");
+  if (ok) { ok.style.display="block"; setTimeout(()=>ok.style.display="none",5000); }
+}
+
+// ── REROLL ────────────────────────────────────────────────────────────────
+async function rerollPlan(planId) {
+  const card = document.querySelector(`#add-${planId}`)?.closest(".plan-card");
+  if (card) card.style.opacity = "0.4";
+  const actNames  = selectedActivities.map(id=>ACTIVITIES.find(a=>a.id===id)?.label).filter(Boolean).join(", ");
+  const compNames = selectedCompanions.map(id=>COMPANIONS.find(c=>c.id===id)?.label).filter(Boolean).join(", ");
+  const alerts = (weatherData?.alerts||[]).map(a=>a.title).join(", ");
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:350,
+        messages:[{ role:"user", content:
+          `New Canadian weekend plan. City: ${weatherData?.city||locationValue}. Activities: ${actNames}. Companions: ${compNames}. ${alerts?`Active weather alerts: ${alerts}. Suggest weather-appropriate alternative.`:""} All temps Celsius.
+Respond ONLY valid JSON: {"id":"r1","title":"Title","emoji":"🎯","time":"Saturday 10am–1pm","vibe":"Fun","companion":"solo","description":"2-3 sentences","tips":"One tip"}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
+    const newPlan = JSON.parse(raw);
+    const idx = plans.findIndex(p => p.id === planId);
+    if (idx > -1) plans[idx] = { ...newPlan, id: planId };
+    renderAdventureScreen(document.getElementById("ai-text")?.textContent || "Here are your updated plans!");
+  } catch(e) {
+    if (card) card.style.opacity = "1";
+  }
+}
+
+init();
+</script>
+</body>
+</html>
