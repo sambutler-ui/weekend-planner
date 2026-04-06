@@ -564,6 +564,7 @@ let plans = [];
 let schedule = [];
 let locationValue = "";
 let isDark = true;
+let geoCoords = null;
 
 // ── THEME ─────────────────────────────────────────────────────────────────
 function toggleTheme() {
@@ -674,44 +675,115 @@ async function loadHomeData() {
   await Promise.all([loadHomeWeather(loc), loadHomeNeighbourhood(loc)]);
 }
 
+// ── WEATHER CODE → CONDITION MAPPING (WMO standard) ──────────────────────
+function wmoToCondition(code) {
+  if (code === 0)              return { condition:"Clear Sky",       icon:"☀️" };
+  if (code <= 2)               return { condition:"Partly Cloudy",   icon:"⛅" };
+  if (code === 3)              return { condition:"Overcast",         icon:"☁️" };
+  if (code <= 49)              return { condition:"Foggy",            icon:"🌫️" };
+  if (code <= 55)              return { condition:"Drizzle",          icon:"🌦️" };
+  if (code <= 65)              return { condition:"Rainy",            icon:"🌧️" };
+  if (code <= 77)              return { condition:"Snowy",            icon:"❄️" };
+  if (code <= 82)              return { condition:"Rain Showers",     icon:"🌧️" };
+  if (code <= 86)              return { condition:"Snow Showers",     icon:"🌨️" };
+  if (code >= 95)              return { condition:"Thunderstorm",     icon:"⛈️" };
+  return { condition:"Mixed",  icon:"🌤️" };
+}
+
+function getWeekendNotes(day, condition, high) {
+  if (condition.includes("Thunder")) return "Stay indoors — storms expected";
+  if (condition.includes("Snow"))    return "Bundle up for snow";
+  if (condition.includes("Rain") || condition.includes("Drizzle")) return "Bring an umbrella";
+  if (high >= 25)  return "Great patio weather";
+  if (high >= 18)  return "Perfect outdoor day";
+  if (high >= 10)  return "Layers recommended";
+  return "Cool — dress warm";
+}
+
+function buildAlerts(weatherDays) {
+  const alerts = [];
+  weatherDays.forEach(w => {
+    if (w.condition.includes("Thunder"))
+      alerts.push({ icon:"⛈️", title:`Thunderstorm Warning — ${w.day}`, message:`Severe storms expected ${w.day}. Keep outdoor plans flexible and have a backup indoors.` });
+    else if (w.condition.includes("Snow") && w.high < 0)
+      alerts.push({ icon:"❄️", title:`Winter Weather — ${w.day}`, message:`Freezing temperatures and snow on ${w.day}. Great day for indoor activities or a cozy bonfire.` });
+    else if (w.condition.includes("Rain") && w.high < 12)
+      alerts.push({ icon:"🌧️", title:`Cold Rain — ${w.day}`, message:`Cold and rainy on ${w.day}. Consider moving outdoor plans to a drier day this weekend.` });
+    else if (w.high >= 32)
+      alerts.push({ icon:"🌡️", title:`Heat Advisory — ${w.day}`, message:`High of ${w.high}°C on ${w.day}. Stay hydrated and plan outdoor activities for the morning.` });
+  });
+  return alerts;
+}
+
+async function geocode(loc) {
+  // Use Open-Meteo's free geocoding API
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(loc)}&count=1&language=en&format=json`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data.results || !data.results.length) throw new Error("Location not found");
+  const r = data.results[0];
+  return {
+    lat: r.latitude,
+    lon: r.longitude,
+    city: r.name + (r.admin1 ? ", " + r.admin1 : "")
+  };
+}
+
+async function fetchRealWeather(lat, lon) {
+  // Fetch Fri/Sat/Sun forecast from Open-Meteo
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum,windspeed_10m_max&timezone=America%2FToronto&forecast_days=10`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  // Find the upcoming Friday, Saturday, Sunday
+  const today = new Date();
+  const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const targets = [];
+  for (let i = 0; i <= 9; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    const name = dayNames[d.getDay()];
+    if (name === "Friday"   && !targets.find(t=>t.label==="Friday"))   targets.push({ label:"Friday",   date:data.daily.time[i], i });
+    if (name === "Saturday" && !targets.find(t=>t.label==="Saturday")) targets.push({ label:"Saturday", date:data.daily.time[i], i });
+    if (name === "Sunday"   && !targets.find(t=>t.label==="Sunday"))   targets.push({ label:"Sunday",   date:data.daily.time[i], i });
+    if (targets.length === 3) break;
+  }
+
+  return targets.map(t => {
+    const code = data.daily.weathercode[t.i];
+    const { condition, icon } = wmoToCondition(code);
+    const high = Math.round(data.daily.temperature_2m_max[t.i]);
+    const low  = Math.round(data.daily.temperature_2m_min[t.i]);
+    const precip = data.daily.precipitation_sum[t.i];
+    const wind   = data.daily.windspeed_10m_max[t.i];
+    return { day: t.label, condition, icon, high, low, precip, wind, note: getWeekendNotes(t.label, condition, high) };
+  });
+}
+
 async function loadHomeWeather(loc) {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:900,
-        messages:[{ role:"user", content:
-          `For Canadian location "${loc}", generate a weekend weather forecast for this coming Friday, Saturday, and Sunday. Use Celsius only. Also generate any relevant weather alerts or warnings if conditions are poor (rain, storms, extreme cold/heat, high winds).
-Respond ONLY with valid JSON, no markdown:
-{"city":"City, Province","weather":[
-{"day":"Friday","condition":"Sunny","icon":"☀️","high":21,"low":12,"note":"Great start to the weekend"},
-{"day":"Saturday","condition":"Partly Cloudy","icon":"⛅","high":18,"low":10,"note":"Good for outdoor plans"},
-{"day":"Sunday","condition":"Rainy","icon":"🌧️","high":14,"low":9,"note":"Consider indoor activities"}
-],"alerts":[
-{"icon":"⚠️","title":"Rain Warning","message":"Heavy rain expected Sunday afternoon. Consider moving outdoor plans to Saturday."}
-],"summary":"Brief overall weekend summary in one sentence."}`
-        }]
-      })
-    });
-    const data = await res.json();
-    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
-    homeWeatherData = JSON.parse(raw);
-    weatherData = homeWeatherData; // share with adventure screen
-    renderHomeWeather();
-    renderHomeAlerts();
-  } catch(e) {
-    homeWeatherData = {
-      city: loc,
-      weather:[
-        {day:"Friday",   condition:"Sunny",         icon:"☀️",  high:21, low:11, note:"Great start"},
-        {day:"Saturday", condition:"Partly Cloudy", icon:"⛅",  high:18, low:10, note:"Good for plans"},
-        {day:"Sunday",   condition:"Cloudy",        icon:"🌥️", high:15, low:9,  note:"Bit overcast"}
-      ],
-      alerts:[], summary:"A decent weekend ahead!"
-    };
+    // Step 1: Geocode
+    const { lat, lon, city } = await geocode(loc);
+    geoCoords = { lat, lon };
+
+    // Step 2: Real weather
+    const weatherDays = await fetchRealWeather(lat, lon);
+    const alerts = buildAlerts(weatherDays);
+
+    const highs = weatherDays.map(w=>w.high);
+    const avg = Math.round(highs.reduce((a,b)=>a+b,0)/highs.length);
+    const hasRain = weatherDays.some(w=>w.condition.includes("Rain")||w.condition.includes("Drizzle"));
+    const summary = hasRain
+      ? `Mixed weekend with some rain — highs between ${Math.min(...highs)}°C and ${Math.max(...highs)}°C. Best day: ${weatherDays.sort((a,b)=>b.high-a.high)[0].day}.`
+      : `A great weekend ahead — highs around ${avg}°C with ${weatherDays[1]?.condition.toLowerCase()} conditions.`;
+
+    homeWeatherData = { city, weather: weatherDays, alerts, summary };
     weatherData = homeWeatherData;
     renderHomeWeather();
     renderHomeAlerts();
+  } catch(e) {
+    console.error("Weather error:", e);
+    document.getElementById("home-weather-container").innerHTML = `<div style="font-size:12px;color:var(--muted);padding:10px 0">⚠️ Couldn't find that location. Try a city name like "Toronto, ON" or "Richmond Hill, ON".</div>`;
+    document.getElementById("home-alerts").innerHTML = "";
   }
 }
 
@@ -862,23 +934,26 @@ Respond ONLY with valid JSON, no markdown:
 
 // ── WEATHER ───────────────────────────────────────────────────────────────
 async function fetchWeather() {
+  // If we already loaded weather on the home screen, reuse it
+  if (homeWeatherData && weatherData) { renderWeatherScreen(); return; }
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:900,
-        messages:[{ role:"user", content:
-          `For Canadian location "${locationValue}", give a 3-day weekend weather forecast (Friday, Saturday, Sunday) and 4 local events. Use Celsius only. Include any weather warnings.
-Respond ONLY with valid JSON, no markdown:
-{"city":"City, Province","weather":[{"day":"Friday","condition":"Sunny","icon":"☀️","high":21,"low":12,"note":""},{"day":"Saturday","condition":"Partly Cloudy","icon":"⛅","high":18,"low":10,"note":""},{"day":"Sunday","condition":"Rainy","icon":"🌧️","high":14,"low":8,"note":""}],"alerts":[{"icon":"⚠️","title":"Alert Title","message":"Alert detail"}],"events":[{"name":"Farmers Market","emoji":"🥦","detail":"Sat 9am–2pm"},{"name":"Live Jazz Patio","emoji":"🎷","detail":"Sun 3pm–6pm"},{"name":"Trail Run","emoji":"🏃","detail":"Sat 8am"},{"name":"Brewery Open House","emoji":"🍺","detail":"Sat 2pm–6pm"}],"summary":"One sentence summary."}`
-        }]
-      })
-    });
-    const data = await res.json();
-    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
-    weatherData = JSON.parse(raw);
+    const loc = locationValue || document.getElementById("home-location").value.trim();
+    const { lat, lon, city } = await geocode(loc);
+    geoCoords = { lat, lon };
+    const weatherDays = await fetchRealWeather(lat, lon);
+    const alerts = buildAlerts(weatherDays);
+    const highs = weatherDays.map(w=>w.high);
+    const hasRain = weatherDays.some(w=>w.condition.includes("Rain")||w.condition.includes("Drizzle"));
+    const avg = Math.round(highs.reduce((a,b)=>a+b,0)/highs.length);
+    const summary = hasRain
+      ? `Mixed weekend — highs between ${Math.min(...highs)}°C and ${Math.max(...highs)}°C. Plan accordingly!`
+      : `Great weekend ahead — highs around ${avg}°C with mostly ${weatherDays[1]?.condition.toLowerCase()} skies.`;
+    weatherData = { city, weather: weatherDays, alerts, summary, events: [] };
+    homeWeatherData = weatherData;
   } catch(e) {
-    weatherData = { city:locationValue||"Your Area, Canada", weather:[{day:"Friday",condition:"Sunny",icon:"☀️",high:21,low:11,note:""},{day:"Saturday",condition:"Partly Cloudy",icon:"⛅",high:18,low:10,note:""},{day:"Sunday",condition:"Clear",icon:"🌤️",high:19,low:10,note:""}], alerts:[], events:[], summary:"A lovely weekend ahead!" };
+    if (!weatherData) {
+      weatherData = { city: locationValue||"Your Area, Canada", weather:[{day:"Friday",condition:"Sunny",icon:"☀️",high:21,low:11,note:""},{day:"Saturday",condition:"Partly Cloudy",icon:"⛅",high:18,low:10,note:""},{day:"Sunday",condition:"Clear",icon:"🌤️",high:19,low:10,note:""}], alerts:[], events:[], summary:"A lovely weekend ahead!" };
+    }
   }
   renderWeatherScreen();
 }
