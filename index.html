@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<title>Weekend Adventure 🍁</title>
+<title>Weekend Adventure 🍁 v1.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -344,6 +344,37 @@
   .act-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
   .act-pill { background: var(--card); border: 1px solid var(--border); border-radius: 100px; padding: 6px 13px; font-size: 12px; color: var(--muted); }
 
+  /* ── CUSTOM EVENT ENTRY ── */
+  .custom-event-section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px; margin-top: 20px;
+  }
+  input[type=time] {
+    width: 100%; background: var(--input-bg); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 15px 18px; font-size: 15px; color: var(--text);
+    font-family: var(--font-body); outline: none; transition: border-color .2s;
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type=time]:focus { border-color: var(--green); }
+  input[type=time]::-webkit-calendar-picker-indicator { filter: invert(0.4) sepia(1) hue-rotate(120deg); cursor: pointer; }
+  .btn-add-custom {
+    width: 100%; background: var(--green-dim); color: var(--green);
+    border: 1.5px solid var(--green); border-radius: 14px; padding: 13px;
+    font-size: 14px; font-weight: 800; font-family: var(--font-body);
+    cursor: pointer; letter-spacing: .3px; transition: all .2s;
+  }
+  .btn-add-custom:hover { background: var(--green); color: #fff; }
+  .custom-event-chip {
+    background: var(--green-dim); border: 1.5px solid var(--green);
+    border-radius: 14px; padding: 12px 14px; margin-top: 10px;
+    display: flex; align-items: flex-start; gap: 10px; animation: fadeUp .3s ease;
+  }
+  .custom-event-chip .cec-info { flex: 1; }
+  .custom-event-chip .cec-name { font-size: 14px; font-weight: 800; color: var(--text); }
+  .custom-event-chip .cec-meta { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+  .custom-event-chip .cec-remove { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0; flex-shrink: 0; }
+  .custom-event-chip .cec-remove:hover { color: rgba(255,80,80,0.7); }
+
   .divider { height: 1px; background: var(--border); margin: 18px 0; }
 
   /* ── NEIGHBOURHOOD SCREEN ── */
@@ -451,6 +482,31 @@
     <div id="step3" class="section" style="display:none">
       <label class="label">🎯 Activities you love (pick any)</label>
       <div class="chip-grid" id="activity-grid"></div>
+
+      <!-- Custom Event Entry -->
+      <div class="custom-event-section">
+        <label class="label" style="margin-top:20px">✏️ Add a Custom Event</label>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6">Found something on Google? Add it here and it'll be included in your calendar export.</p>
+
+        <input type="text" id="custom-event-name" placeholder="Event name e.g. Jazz Fest at Harbourfront" style="margin-bottom:10px"/>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <div style="flex:1">
+            <label style="font-size:10px;color:var(--muted);font-weight:800;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px">📅 Date</label>
+            <input type="date" id="custom-event-date" style="width:100%"/>
+          </div>
+          <div style="flex:1">
+            <label style="font-size:10px;color:var(--muted);font-weight:800;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px">🕐 Start Time</label>
+            <input type="time" id="custom-event-time" style="width:100%"/>
+          </div>
+        </div>
+        <input type="text" id="custom-event-location" placeholder="Location (optional) e.g. Harbourfront Centre" style="margin-bottom:10px"/>
+        <input type="text" id="custom-event-notes" placeholder="Notes (optional) e.g. Bring lawn chairs, $20 entry" style="margin-bottom:12px"/>
+        <button class="btn-add-custom" onclick="addCustomEvent()">＋ Add to My Weekend</button>
+
+        <!-- Custom events list -->
+        <div id="custom-events-list"></div>
+      </div>
+
       <div style="margin-top:20px">
         <button class="btn-primary" onclick="generatePlan()">🎲 Generate My Weekend Plan →</button>
         <button class="btn-secondary" onclick="setStep(2)">← Back</button>
@@ -633,6 +689,108 @@ function toggleChip(prefix, id, arr) {
   else { arr.push(id); btn.classList.add("selected"); }
 }
 
+// ── CUSTOM EVENTS ────────────────────────────────────────────────────────
+let customEvents = [];
+
+function addCustomEvent() {
+  const name     = document.getElementById("custom-event-name").value.trim();
+  const date     = document.getElementById("custom-event-date").value;
+  const time     = document.getElementById("custom-event-time").value;
+  const location = document.getElementById("custom-event-location").value.trim();
+  const notes    = document.getElementById("custom-event-notes").value.trim();
+
+  if (!name) {
+    document.getElementById("custom-event-name").focus();
+    document.getElementById("custom-event-name").style.borderColor = "var(--alert-border)";
+    setTimeout(() => document.getElementById("custom-event-name").style.borderColor = "", 2000);
+    return;
+  }
+
+  const event = {
+    id: "custom-" + Date.now(),
+    name,
+    date,
+    time,
+    location,
+    notes,
+    emoji: "📌",
+    isCustom: true,
+  };
+
+  customEvents.push(event);
+  // Also add to schedule directly
+  schedule.push({
+    id: event.id,
+    title: event.name,
+    emoji: "📌",
+    time: formatCustomEventTime(event),
+    vibe: "Custom Event",
+    companion: "solo",
+    description: [location, notes].filter(Boolean).join(" · ") || "Custom event added by you",
+    tips: "",
+    isCustom: true,
+    rawDate: date,
+    rawTime: time,
+    rawLocation: location,
+  });
+
+  // Clear inputs
+  document.getElementById("custom-event-name").value = "";
+  document.getElementById("custom-event-date").value = "";
+  document.getElementById("custom-event-time").value = "";
+  document.getElementById("custom-event-location").value = "";
+  document.getElementById("custom-event-notes").value = "";
+
+  renderCustomEventsList();
+
+  // Update home schedule button
+  const hb = document.getElementById("home-schedule-btn");
+  if (hb) { hb.style.display = "block"; hb.textContent = `📅 My Weekend Plan (${schedule.length})`; }
+}
+
+function formatCustomEventTime(event) {
+  let str = "";
+  if (event.date) {
+    const d = new Date(event.date + "T12:00:00");
+    str += d.toLocaleDateString("en-CA", { weekday:"long", month:"short", day:"numeric" });
+  }
+  if (event.time) {
+    const [h, m] = event.time.split(":").map(Number);
+    const ampm = h >= 12 ? "pm" : "am";
+    const h12 = h % 12 || 12;
+    str += (str ? " at " : "") + h12 + (m ? `:${String(m).padStart(2,"0")}` : "") + ampm;
+  }
+  return str || "Custom Event";
+}
+
+function removeCustomEvent(id) {
+  customEvents = customEvents.filter(e => e.id !== id);
+  schedule = schedule.filter(s => s.id !== id);
+  renderCustomEventsList();
+  const hb = document.getElementById("home-schedule-btn");
+  if (hb && schedule.length === 0) hb.style.display = "none";
+  else if (hb) hb.textContent = `📅 My Weekend Plan (${schedule.length})`;
+}
+
+function renderCustomEventsList() {
+  const el = document.getElementById("custom-events-list");
+  if (!el) return;
+  if (!customEvents.length) { el.innerHTML = ""; return; }
+  let html = `<div style="font-size:10px;color:var(--muted);font-weight:800;letter-spacing:2px;text-transform:uppercase;margin:14px 0 8px">✅ Added Events</div>`;
+  customEvents.forEach(e => {
+    const meta = [formatCustomEventTime(e), e.location, e.notes].filter(Boolean).join(" · ");
+    html += `<div class="custom-event-chip">
+      <span style="font-size:22px">📌</span>
+      <div class="cec-info">
+        <div class="cec-name">${e.name}</div>
+        ${meta ? `<div class="cec-meta">${meta}</div>` : ""}
+      </div>
+      <button class="cec-remove" onclick="removeCustomEvent('${e.id}')">✕</button>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
 // ── NAVIGATION ───────────────────────────────────────────────────────────
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -661,6 +819,14 @@ function goStep3() {
   if (!locationValue) locationValue = document.getElementById("home-location").value.trim();
   if (locationValue) fetchWeather();
   setStep(3);
+  // Pre-fill custom event date to next Friday
+  const dateInput = document.getElementById("custom-event-date");
+  if (dateInput && !dateInput.value) {
+    const today = new Date();
+    const daysUntilFri = (5 - today.getDay() + 7) % 7 || 7;
+    const nextFri = new Date(today); nextFri.setDate(today.getDate() + daysUntilFri);
+    dateInput.value = nextFri.toISOString().split("T")[0];
+  }
 }
 
 // ── HOME DATA LOAD ────────────────────────────────────────────────────────
@@ -1225,6 +1391,8 @@ function addToSchedule(planId) {
 
 function removeFromSchedule(planId) {
   schedule = schedule.filter(s => s.id !== planId);
+  customEvents = customEvents.filter(e => e.id !== planId);
+  renderCustomEventsList();
   renderSchedule();
 }
 
@@ -1244,12 +1412,13 @@ function renderSchedule() {
   });
 
   schedule.forEach(p => {
-    html += `<div class="sched-item">
+    const isCustom = p.isCustom;
+    html += `<div class="sched-item" style="${isCustom ? 'border-color:var(--green);background:var(--green-dim)' : ''}">
       <div class="si-emoji">${p.emoji}</div>
       <div style="flex:1">
         <div class="si-title">${p.title}</div>
-        <div class="si-time">${p.time}</div>
-        ${companionTag(p.companion)}
+        <div class="si-time">${p.time}${isCustom ? ' · <span style="color:var(--green);font-weight:800">Custom Event</span>' : ''}</div>
+        ${isCustom ? '' : companionTag(p.companion)}
         <div class="si-desc">${p.description}</div>
       </div>
       <button class="si-remove" onclick="removeFromSchedule('${p.id}')">✕</button>
@@ -1319,9 +1488,32 @@ function exportCalendar() {
   const esc  = s => (s||"").replace(/\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;");
   let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Weekend Adventure CA//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:🌄 My Weekend Adventure\r\nX-WR-TIMEZONE:America/Toronto\r\n";
   schedule.forEach(p => {
-    const { start, end } = parseTimes(p.time);
-    const tip = p.tips ? `\\n\\n💡 Tip: ${esc(p.tips)}` : "";
-    ics += `BEGIN:VEVENT\r\nUID:${uid()}\r\nDTSTAMP:${now}Z\r\nDTSTART:${start}\r\nDTEND:${end}\r\nSUMMARY:${esc(p.emoji+" "+p.title)}\r\nDESCRIPTION:${esc(p.description)}${tip}\r\nLOCATION:${esc(loc)}\r\nSTATUS:CONFIRMED\r\nEND:VEVENT\r\n`;
+    let start, end;
+    if (p.isCustom && p.rawDate && p.rawTime) {
+      // Use exact date/time from custom event
+      const [h, m] = p.rawTime.split(":").map(Number);
+      start = icsStamp(new Date(p.rawDate + "T00:00:00"), h, m);
+      end   = icsStamp(new Date(p.rawDate + "T00:00:00"), h + 2, m); // default 2hr duration
+    } else if (p.isCustom && p.rawDate) {
+      start = icsStamp(new Date(p.rawDate + "T00:00:00"), 9, 0);
+      end   = icsStamp(new Date(p.rawDate + "T00:00:00"), 11, 0);
+    } else {
+      const times = parseTimes(p.time);
+      start = times.start; end = times.end;
+    }
+    const tip = p.tips ? `\n\n💡 Tip: ${esc(p.tips)}` : "";
+    const eventLoc = p.isCustom && p.rawLocation ? esc(p.rawLocation) : esc(loc);
+    ics += `BEGIN:VEVENT
+UID:${uid()}
+DTSTAMP:${now}Z
+DTSTART:${start}
+DTEND:${end}
+SUMMARY:${esc(p.emoji+" "+p.title)}
+DESCRIPTION:${esc(p.description)}${tip}
+LOCATION:${eventLoc}
+STATUS:CONFIRMED
+END:VEVENT
+`;
   });
   ics += "END:VCALENDAR";
   const blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
