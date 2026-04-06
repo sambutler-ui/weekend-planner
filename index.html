@@ -716,17 +716,111 @@ function buildAlerts(weatherDays) {
 }
 
 async function geocode(loc) {
-  // Use Open-Meteo's free geocoding API
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(loc)}&count=1&language=en&format=json`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (!data.results || !data.results.length) throw new Error("Location not found");
-  const r = data.results[0];
-  return {
-    lat: r.latitude,
-    lon: r.longitude,
-    city: r.name + (r.admin1 ? ", " + r.admin1 : "")
+  // Clean input: handle "City, ON" format
+  const cleaned = loc.trim()
+    .replace(/,\s*(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|NT|YT|NU)/i, " Canada")
+    .replace(/\s+/g, " ");
+
+  // Known Canadian cities fallback table
+  const KNOWN = {
+    "toronto": { lat:43.6532, lon:-79.3832, city:"Toronto, Ontario" },
+    "richmond hill": { lat:43.8828, lon:-79.4403, city:"Richmond Hill, Ontario" },
+    "richmond": { lat:49.1666, lon:-123.1336, city:"Richmond, British Columbia" },
+    "vancouver": { lat:49.2827, lon:-123.1207, city:"Vancouver, British Columbia" },
+    "calgary": { lat:51.0447, lon:-114.0719, city:"Calgary, Alberta" },
+    "edmonton": { lat:53.5461, lon:-113.4938, city:"Edmonton, Alberta" },
+    "montreal": { lat:45.5017, lon:-73.5673, city:"Montreal, Quebec" },
+    "ottawa": { lat:45.4215, lon:-75.6972, city:"Ottawa, Ontario" },
+    "winnipeg": { lat:49.8951, lon:-97.1384, city:"Winnipeg, Manitoba" },
+    "halifax": { lat:44.6488, lon:-63.5752, city:"Halifax, Nova Scotia" },
+    "mississauga": { lat:43.5890, lon:-79.6441, city:"Mississauga, Ontario" },
+    "brampton": { lat:43.7315, lon:-79.7624, city:"Brampton, Ontario" },
+    "hamilton": { lat:43.2557, lon:-79.8711, city:"Hamilton, Ontario" },
+    "kitchener": { lat:43.4516, lon:-80.4925, city:"Kitchener, Ontario" },
+    "london": { lat:42.9849, lon:-81.2453, city:"London, Ontario" },
+    "markham": { lat:43.8561, lon:-79.3370, city:"Markham, Ontario" },
+    "vaughan": { lat:43.8361, lon:-79.4983, city:"Vaughan, Ontario" },
+    "oakville": { lat:43.4675, lon:-79.6877, city:"Oakville, Ontario" },
+    "burlington": { lat:43.3255, lon:-79.7990, city:"Burlington, Ontario" },
+    "surrey": { lat:49.1913, lon:-122.8490, city:"Surrey, British Columbia" },
+    "saskatoon": { lat:52.1332, lon:-106.6700, city:"Saskatoon, Saskatchewan" },
+    "regina": { lat:50.4452, lon:-104.6189, city:"Regina, Saskatchewan" },
+    "victoria": { lat:48.4284, lon:-123.3656, city:"Victoria, British Columbia" },
+    "quebec city": { lat:46.8139, lon:-71.2080, city:"Quebec City, Quebec" },
+    "london on": { lat:42.9849, lon:-81.2453, city:"London, Ontario" },
+    "toronto on": { lat:43.6532, lon:-79.3832, city:"Toronto, Ontario" },
+    "toronto, on": { lat:43.6532, lon:-79.3832, city:"Toronto, Ontario" },
+    "toronto, ontario": { lat:43.6532, lon:-79.3832, city:"Toronto, Ontario" },
+    "richmond hill on": { lat:43.8828, lon:-79.4403, city:"Richmond Hill, Ontario" },
+    "richmond hill, on": { lat:43.8828, lon:-79.4403, city:"Richmond Hill, Ontario" },
+    "ottawa on": { lat:45.4215, lon:-75.6972, city:"Ottawa, Ontario" },
+    "ottawa, on": { lat:45.4215, lon:-75.6972, city:"Ottawa, Ontario" },
+    "vancouver bc": { lat:49.2827, lon:-123.1207, city:"Vancouver, British Columbia" },
+    "vancouver, bc": { lat:49.2827, lon:-123.1207, city:"Vancouver, British Columbia" },
+    "calgary ab": { lat:51.0447, lon:-114.0719, city:"Calgary, Alberta" },
+    "calgary, ab": { lat:51.0447, lon:-114.0719, city:"Calgary, Alberta" },
   };
+
+  // Match against known cities — strip province suffix for matching
+  const key = loc.toLowerCase().replace(/[,.].*$/, "").trim();
+  const keyFull = loc.toLowerCase().trim();
+  const match = KNOWN[key] || KNOWN[keyFull];
+  if (match) return match;
+
+  // Try Open-Meteo geocoding (works from browser, has CORS headers)
+  try {
+    const searchTerm = cleaned.replace(/ Canada$/, "").trim();
+    const url = "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(searchTerm) + "&count=10&language=en&format=json";
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results && data.results.length) {
+        const canadian = data.results.find(r => r.country_code === "CA") || data.results[0];
+        return {
+          lat: canadian.latitude,
+          lon: canadian.longitude,
+          city: canadian.name + (canadian.admin1 ? ", " + canadian.admin1 : ", Canada")
+        };
+      }
+    }
+  } catch(e) { console.warn("Open-Meteo geocode failed", e); }
+
+  // Fallback: use CORS proxy with Nominatim
+  try {
+    const query = loc + ", Canada";
+    const nominatimUrl = "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(query) + "&format=json&limit=1&addressdetails=1";
+    const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(nominatimUrl);
+    const res = await fetch(proxyUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length) {
+        const r = data[0];
+        const city = r.address?.city || r.address?.town || r.address?.village || loc;
+        const province = r.address?.state || "";
+        return { lat: parseFloat(r.lat), lon: parseFloat(r.lon), city: city + (province ? ", " + province : "") };
+      }
+    }
+  } catch(e) { console.warn("Nominatim proxy failed", e); }
+
+  // Last resort: if it looks like a city name, try Open-Meteo with just the city
+  try {
+    const cityOnly = loc.replace(/[,].*$/, "").trim();
+    const url = "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(cityOnly) + "&count=10&language=en&format=json";
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.results && data.results.length) {
+        const canadian = data.results.find(r => r.country_code === "CA");
+        if (canadian) return {
+          lat: canadian.latitude,
+          lon: canadian.longitude,
+          city: canadian.name + (canadian.admin1 ? ", " + canadian.admin1 : ", Canada")
+        };
+      }
+    }
+  } catch(e) { console.warn("City-only geocode failed", e); }
+
+  throw new Error("Location not found: " + loc);
 }
 
 async function fetchRealWeather(lat, lon) {
@@ -782,7 +876,11 @@ async function loadHomeWeather(loc) {
     renderHomeAlerts();
   } catch(e) {
     console.error("Weather error:", e);
-    document.getElementById("home-weather-container").innerHTML = `<div style="font-size:12px;color:var(--muted);padding:10px 0">⚠️ Couldn't find that location. Try a city name like "Toronto, ON" or "Richmond Hill, ON".</div>`;
+    const errMsg = (e.message||"").toLowerCase().includes("not found")
+      ? "⚠️ Location not found. Try: <strong>Toronto</strong>, <strong>Vancouver</strong>, <strong>Ottawa</strong>, or <strong>Calgary</strong>."
+      : "⚠️ Could not load weather. Check your connection and try again.";
+    document.getElementById("home-weather-container").innerHTML =
+      `<div style="background:var(--alert-bg);border:1px solid var(--alert-border);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--alert-text);line-height:1.7">${errMsg}</div>`;
     document.getElementById("home-alerts").innerHTML = "";
   }
 }
