@@ -926,49 +926,130 @@ function renderHomeAlerts() {
 
 async function loadHomeNeighbourhood(loc) {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:700,
-        messages:[{ role:"user", content:
-          `For Canadian location "${loc}", suggest 3 local things to do or places to check out this weekend. Be specific and realistic for that Canadian city/area. Mix types: could be a local event, a park, a market, a restaurant, a trail, a neighbourhood, etc.
-Respond ONLY with valid JSON, no markdown:
-{"spots":[
-{"name":"Distillery District","emoji":"🏛️","type":"Neighbourhood","detail":"Cobblestone streets, art galleries & weekend market","badge":"Popular"},
-{"name":"Tommy Thompson Park","emoji":"🌿","type":"Nature","detail":"Bird sanctuary with 15km of trails along the lake","badge":"Free"},
-{"name":"St. Lawrence Market","emoji":"🥦","type":"Market","detail":"Open Saturday 5am–3pm, best peameal bacon in the city","badge":"Saturday"}
-]}`
-        }]
-      })
-    });
-    const data = await res.json();
-    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
-    const parsed = JSON.parse(raw);
-    renderHomeNeighbourhood(parsed.spots || []);
+    const spots = await fetchLocalSpots(loc);
+    renderHomeNeighbourhood(spots);
   } catch(e) {
+    console.warn("Neighbourhood load failed:", e);
     renderHomeNeighbourhood([]);
   }
 }
 
-function renderHomeNeighbourhood(spots) {
-  const el = document.getElementById("home-neighbourhood");
-  if (!spots.length) { el.innerHTML = ""; return; }
-  let html = `<div class="section-heading">🗺️ Discover This Weekend</div>`;
-  spots.forEach(s => {
-    html += `<div class="neighbourhood-card" onclick="showScreen('neighbourhood')">
-      <div class="nc-emoji">${s.emoji}</div>
-      <div style="flex:1">
-        <div class="nc-name">${s.name}</div>
-        <div class="nc-detail">${s.detail}</div>
-      </div>
-      ${s.badge ? `<div class="nc-badge">${s.badge}</div>` : ""}
-    </div>`;
-  });
-  html += `<button class="btn-secondary" style="margin-top:4px" onclick="showScreen('neighbourhood')">🗺️ See More Local Spots →</button>`;
-  el.innerHTML = html;
+// ── FETCH LOCAL SPOTS VIA OVERPASS (OpenStreetMap) ────────────────────────
+async function fetchLocalSpots(loc) {
+  // Use geoCoords if we already have them, otherwise geocode
+  let lat = geoCoords?.lat;
+  let lon = geoCoords?.lon;
+  if (!lat || !lon) {
+    try { const g = await geocode(loc); lat = g.lat; lon = g.lon; } catch(e) {}
+  }
+  if (!lat || !lon) return getStaticSpots(loc);
+
+  // Query Overpass for interesting places within 10km
+  const radius = 10000;
+  const query = `[out:json][timeout:10];
+(
+  node["leisure"="park"]["name"](around:${radius},${lat},${lon});
+  node["amenity"="marketplace"]["name"](around:${radius},${lat},${lon});
+  node["amenity"="theatre"]["name"](around:${radius},${lat},${lon});
+  node["tourism"="museum"]["name"](around:${radius},${lat},${lon});
+  node["leisure"="golf_course"]["name"](around:${radius},${lat},${lon});
+  node["tourism"="attraction"]["name"](around:${radius},${lat},${lon});
+  node["natural"="beach"]["name"](around:${radius},${lat},${lon});
+  way["leisure"="park"]["name"](around:${radius},${lat},${lon});
+  way["tourism"="museum"]["name"](around:${radius},${lat},${lon});
+  way["tourism"="attraction"]["name"](around:${radius},${lat},${lon});
+);
+out body 30;`;
+
+  try {
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      body: query,
+      headers: { "Content-Type": "text/plain" }
+    });
+    const data = await res.json();
+    const elements = data.elements || [];
+
+    // Pick 3 varied spots
+    const typeMap = {
+      park:        { emoji:"🌿", badge:"Outdoor" },
+      marketplace: { emoji:"🥦", badge:"Market" },
+      theatre:     { emoji:"🎭", badge:"Arts" },
+      museum:      { emoji:"🏛️", badge:"Culture" },
+      golf_course: { emoji:"⛳", badge:"Sport" },
+      attraction:  { emoji:"⭐", badge:"Popular" },
+      beach:       { emoji:"🏖️", badge:"Beach" },
+    };
+
+    const seen = new Set();
+    const spots = [];
+    for (const el of elements) {
+      const name = el.tags?.name;
+      if (!name || seen.has(name) || name.length < 3) continue;
+      seen.add(name);
+      const type = el.tags?.leisure || el.tags?.amenity || el.tags?.tourism || el.tags?.natural || "attraction";
+      const { emoji, badge } = typeMap[type] || { emoji:"📍", badge:"Local" };
+      const detail = el.tags?.description || el.tags?.["name:en"] || buildDetailFromTags(el.tags, type);
+      spots.push({ name, emoji, detail, badge });
+      if (spots.length >= 3) break;
+    }
+
+    return spots.length >= 2 ? spots : getStaticSpots(loc);
+  } catch(e) {
+    console.warn("Overpass failed:", e);
+    return getStaticSpots(loc);
+  }
 }
 
-// ── NEIGHBOURHOOD SCREEN ──────────────────────────────────────────────────
+function buildDetailFromTags(tags, type) {
+  if (type === "park") return "Local park — great for a weekend walk or picnic";
+  if (type === "marketplace") return "Local market — fresh produce & local vendors";
+  if (type === "museum") return "Museum — worth a visit this weekend";
+  if (type === "theatre") return "Live performances and local arts";
+  if (type === "golf_course") return "Golf course open to the public";
+  if (type === "beach") return "Beach access — perfect for a walk or swim";
+  if (tags?.["addr:city"]) return `Located in ${tags["addr:city"]} — worth a visit`;
+  return "A local favourite worth checking out this weekend";
+}
+
+// Static fallbacks by city for when APIs are unavailable
+function getStaticSpots(loc) {
+  const city = loc.toLowerCase();
+  const fallbacks = {
+    toronto: [
+      { name:"Toronto Islands", emoji:"🏝️", detail:"Ferry ride + beaches, trails & skyline views", badge:"Weekend" },
+      { name:"Kensington Market", emoji:"🥑", detail:"Eclectic neighbourhood with cafés, vintage shops & street food", badge:"Popular" },
+      { name:"High Park", emoji:"🌿", detail:"400 acres of trails, a zoo & Cherry Blossoms in spring", badge:"Free" },
+    ],
+    vancouver: [
+      { name:"Stanley Park", emoji:"🌲", detail:"Iconic 1,000-acre park with seawall walk & beaches", badge:"Free" },
+      { name:"Granville Island", emoji:"🎨", detail:"Public market, artisan studios & waterfront dining", badge:"Weekend" },
+      { name:"Kitsilano Beach", emoji:"🏖️", detail:"Popular beach with outdoor pool & mountain views", badge:"Outdoor" },
+    ],
+    ottawa: [
+      { name:"ByWard Market", emoji:"🥦", detail:"Historic market with fresh food, restaurants & boutiques", badge:"Weekend" },
+      { name:"Rideau Canal", emoji:"🛶", detail:"UNESCO World Heritage site — kayak or cycle the towpath", badge:"Outdoor" },
+      { name:"Gatineau Park", emoji:"🌿", detail:"200,000 acres of trails, lakes & lookouts just across the river", badge:"Free" },
+    ],
+    calgary: [
+      { name:"Prince's Island Park", emoji:"🌿", detail:"River island park with trails, festivals & great city views", badge:"Free" },
+      { name:"Inglewood", emoji:"☕", detail:"Trendy neighbourhood with antique shops, cafés & live music", badge:"Popular" },
+      { name:"Calgary Zoo", emoji:"🦁", detail:"One of Canada's largest zoos — great for the whole family", badge:"Weekend" },
+    ],
+  };
+
+  const key = Object.keys(fallbacks).find(k => city.includes(k));
+  if (key) return fallbacks[key];
+
+  // Generic Canadian fallbacks
+  return [
+    { name:"Local Farmers Market", emoji:"🥦", detail:"Check your city's weekend market for fresh local produce", badge:"Saturday" },
+    { name:"Nearest Provincial Park", emoji:"🌿", detail:"Great Canadian outdoors — trails, lakes & fresh air await", badge:"Outdoor" },
+    { name:"Downtown Waterfront", emoji:"🚶", detail:"Take a stroll along the waterfront this weekend", badge:"Free" },
+  ];
+}
+
+
 async function renderNeighbourhood() {
   const body = document.getElementById("neighbourhood-body");
   const loc = locationValue || document.getElementById("home-location").value.trim();
@@ -976,59 +1057,75 @@ async function renderNeighbourhood() {
     body.innerHTML = `<div class="empty-state"><div class="es-icon">🗺️</div><div class="es-title">No location set</div><div class="es-sub">Go back and enter your location first.</div></div><button class="btn-primary" style="margin-top:16px" onclick="showScreen('home')">← Go Back</button>`;
     return;
   }
-  body.innerHTML = `<div class="loading-center"><div class="spin-emoji">🗺️</div><p>Discovering local spots<br>near ${loc}...</p></div>`;
+  body.innerHTML = `<div class="loading-center"><div class="spin-emoji">🗺️</div><p>Finding local spots near ${loc}...</p></div>`;
+
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:1200,
-        messages:[{ role:"user", content:
-          `For the Canadian location "${loc}", give detailed weekend discovery recommendations across 4 categories: outdoor nature spots, local food & drink, arts & culture, and active/sports. Be specific and realistic for that area.
-Respond ONLY with valid JSON, no markdown:
-{"categories":[
-{"title":"🌿 Outdoor & Nature","spots":[
-  {"name":"Spot Name","emoji":"🌿","detail":"What it is and why it's worth visiting this weekend","badge":"Free"},
-  {"name":"Spot Name 2","emoji":"🏞️","detail":"Description","badge":"Trail"}
-]},
-{"title":"🍽️ Food & Drink","spots":[
-  {"name":"Place Name","emoji":"🍺","detail":"What to order, when it's open","badge":"Saturday"},
-  {"name":"Place Name 2","emoji":"☕","detail":"Description","badge":"Local Fave"}
-]},
-{"title":"🎨 Arts & Culture","spots":[
-  {"name":"Venue Name","emoji":"🎭","detail":"What's on this weekend","badge":"Event"},
-  {"name":"Venue Name 2","emoji":"🎨","detail":"Description","badge":"Free"}
-]},
-{"title":"⚡ Active & Sports","spots":[
-  {"name":"Activity Name","emoji":"🚴","detail":"Where to go and what you'll need","badge":"Weekend"},
-  {"name":"Activity Name 2","emoji":"⛳","detail":"Description","badge":"Outdoor"}
-]}
-]}`
-        }]
-      })
-    });
-    const data = await res.json();
-    const raw = data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim();
-    const parsed = JSON.parse(raw);
-    let html = `<div style="font-size:13px;color:var(--muted);margin-bottom:16px">📍 ${loc}</div>`;
-    (parsed.categories || []).forEach(cat => {
+    let lat = geoCoords?.lat;
+    let lon = geoCoords?.lon;
+    if (!lat || !lon) {
+      const g = await geocode(loc); lat = g.lat; lon = g.lon;
+    }
+
+    const radius = 8000;
+    const categories = [
+      { title:"🌿 Outdoor & Nature", tags:`node["leisure"="park"]["name"](around:${radius},${lat},${lon}); way["leisure"="park"]["name"](around:${radius},${lat},${lon}); node["natural"="beach"]["name"](around:${radius},${lat},${lon});`, emoji:"🌿", badge:"Outdoor" },
+      { title:"🍽️ Food & Markets",   tags:`node["amenity"="marketplace"]["name"](around:${radius},${lat},${lon}); node["amenity"="food_court"]["name"](around:${radius},${lat},${lon}); node["shop"="farm"]["name"](around:${radius},${lat},${lon});`, emoji:"🥦", badge:"Market" },
+      { title:"🎨 Arts & Culture",   tags:`node["tourism"="museum"]["name"](around:${radius},${lat},${lon}); node["amenity"="theatre"]["name"](around:${radius},${lat},${lon}); node["tourism"="gallery"]["name"](around:${radius},${lat},${lon});`, emoji:"🎭", badge:"Culture" },
+      { title:"⚡ Active & Sports",  tags:`node["leisure"="golf_course"]["name"](around:${radius},${lat},${lon}); node["leisure"="sports_centre"]["name"](around:${radius},${lat},${lon}); node["leisure"="swimming_pool"]["name"](around:${radius},${lat},${lon}); way["leisure"="golf_course"]["name"](around:${radius},${lat},${lon});`, emoji:"⚡", badge:"Sport" },
+    ];
+
+    let html = `<div style="font-size:13px;color:var(--muted);margin-bottom:16px">📍 ${homeWeatherData?.city || loc}</div>`;
+
+    for (const cat of categories) {
+      const query = `[out:json][timeout:8];
+(
+${cat.tags}
+);
+out body 10;`;
+      let spots = [];
+      try {
+        const res = await fetch("https://overpass-api.de/api/interpreter", {
+          method:"POST", body:query, headers:{"Content-Type":"text/plain"}
+        });
+        const data = await res.json();
+        const seen = new Set();
+        for (const el of (data.elements||[])) {
+          const name = el.tags?.name;
+          if (!name || seen.has(name) || name.length < 3) continue;
+          seen.add(name);
+          spots.push({ name, emoji:cat.emoji, detail:buildDetailFromTags(el.tags, el.tags?.leisure||el.tags?.amenity||el.tags?.tourism||"attraction"), badge:cat.badge });
+          if (spots.length >= 2) break;
+        }
+      } catch(e) { console.warn("Overpass category failed:", e); }
+
+      // Fill with static if not enough results
+      const staticFill = getStaticSpots(loc);
+      while (spots.length < 2 && staticFill.length) spots.push(staticFill.shift());
+
       html += `<div class="section-heading">${cat.title}</div>`;
-      (cat.spots || []).forEach(s => {
-        html += `<div class="neighbourhood-card">
-          <div class="nc-emoji">${s.emoji}</div>
-          <div style="flex:1">
-            <div class="nc-name">${s.name}</div>
-            <div class="nc-detail">${s.detail}</div>
-          </div>
-          ${s.badge?`<div class="nc-badge">${s.badge}</div>`:""}
-        </div>`;
+      spots.forEach(s => {
+        html += `<div class="neighbourhood-card"><div class="nc-emoji">${s.emoji}</div><div style="flex:1"><div class="nc-name">${s.name}</div><div class="nc-detail">${s.detail}</div></div>${s.badge?`<div class="nc-badge">${s.badge}</div>`:""}</div>`;
       });
-    });
+    }
+
     html += `<button class="btn-secondary" style="margin-top:8px" onclick="showScreen('home')">← Back to Home</button>`;
     body.innerHTML = html;
+
   } catch(e) {
-    body.innerHTML = `<div class="empty-state"><div class="es-icon">😕</div><div class="es-title">Couldn't load spots</div><div class="es-sub">Check your connection and try again.</div></div><button class="btn-primary" style="margin-top:16px" onclick="renderNeighbourhood()">Try Again</button>`;
+    console.error("Neighbourhood screen error:", e);
+    // Show static fallback
+    const spots = getStaticSpots(loc);
+    let html = `<div style="font-size:13px;color:var(--muted);margin-bottom:16px">📍 ${loc}</div>`;
+    html += `<div class="section-heading">🌿 Local Favourites</div>`;
+    spots.forEach(s => {
+      html += `<div class="neighbourhood-card"><div class="nc-emoji">${s.emoji}</div><div style="flex:1"><div class="nc-name">${s.name}</div><div class="nc-detail">${s.detail}</div></div><div class="nc-badge">${s.badge}</div></div>`;
+    });
+    html += `<button class="btn-secondary" style="margin-top:12px" onclick="renderNeighbourhood()">🔄 Try Again</button>
+    <button class="btn-secondary" onclick="showScreen('home')">← Back to Home</button>`;
+    body.innerHTML = html;
   }
 }
+
 
 // ── WEATHER ───────────────────────────────────────────────────────────────
 async function fetchWeather() {
